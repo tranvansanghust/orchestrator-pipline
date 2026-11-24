@@ -13,7 +13,10 @@ tmux_session_name() {
   printf 'orchestra-%s\n' "$(config_get '.project' | tr -c 'a-zA-Z0-9_-\n' '-')"
 }
 
-_tmux_ok() { command -v tmux >/dev/null 2>&1; }
+# _tmux_ok — tmux is usable (ORCHESTRA_NO_TMUX=1 turns it off).
+_tmux_ok() {
+  [ "${ORCHESTRA_NO_TMUX:-}" != 1 ] && command -v tmux >/dev/null 2>&1
+}
 
 # tmux_open_cockpit — `orchestra design`.
 tmux_open_cockpit() {

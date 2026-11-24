@@ -6,13 +6,14 @@
 #   VERIFY      -> REVIEW (pass) | IN_PROGRESS (fail, retry) | BLOCKED
 #   REVIEW      -> MERGED (accept) | DRAFT (reject, back to the agent) | ESCALATED
 #   MERGED      -> DONE
-#   ESCALATED   -> MERGED | DRAFT                    (orchestra resolve, step 6)
+#   ESCALATED   -> MERGED (resolve accept) | DRAFT (reject / retry / amend-spec)
+#   BLOCKED     -> DRAFT (resolve reject / retry / amend-spec)
 #   DRAFT, DISPATCHED, IN_PROGRESS -> BLOCKED        (no agent, setup, dispatch)
 
 _SM_EDGES="DRAFT:DISPATCHED DRAFT:BLOCKED DISPATCHED:IN_PROGRESS DISPATCHED:BLOCKED
 IN_PROGRESS:SUBMITTED IN_PROGRESS:BLOCKED SUBMITTED:VERIFY VERIFY:REVIEW
 VERIFY:IN_PROGRESS VERIFY:BLOCKED REVIEW:MERGED REVIEW:DRAFT REVIEW:ESCALATED
-MERGED:DONE ESCALATED:MERGED ESCALATED:DRAFT"
+MERGED:DONE ESCALATED:MERGED ESCALATED:DRAFT BLOCKED:DRAFT"
 
 _sm_file() { printf '%s/tasks/%s.json\n' "$(bus_dir)" "$1"; }
 
@@ -62,8 +63,26 @@ sm_transition() {
   printf '  %-4s %-11s -> %-11s %s\n' "$1" "$_from" "$2" "$3"
 }
 
-# status_main — `orchestra status`: task table, FR status, open escalations.
+# status_main [--watch] — `orchestra status`: task table, FR status, open
+# escalations. --watch redraws every ORCHESTRA_WATCH_INTERVAL seconds (default
+# 5) until interrupted; ORCHESTRA_WATCH_FRAMES limits the frames (tests).
 status_main() {
+  if [ "${1:-}" = --watch ]; then
+    _frames=${ORCHESTRA_WATCH_FRAMES:-0}
+    _i=0
+    while :; do
+      if [ -t 1 ]; then printf '\033[H\033[2J'; fi
+      printf 'orchestra status  (%s, every %ss, Ctrl-C to quit)\n\n' "$(date '+%H:%M:%S')" "${ORCHESTRA_WATCH_INTERVAL:-5}"
+      _status_once
+      _i=$((_i + 1))
+      if [ "$_frames" -gt 0 ] && [ "$_i" -ge "$_frames" ]; then return 0; fi
+      sleep "${ORCHESTRA_WATCH_INTERVAL:-5}"
+    done
+  fi
+  _status_once
+}
+
+_status_once() {
   plan_path >/dev/null
   printf '%-5s %-11s %-10s %-6s %-6s %s\n' TASK STATE AGENT VERIFY REJECT REASON
   for _t in $(plan_get '.tasks[].id'); do
@@ -78,9 +97,10 @@ status_main() {
   fi
   set -- "$(bus_dir)"/escalations/*.md
   if [ -e "$1" ]; then
-    printf '\nNeeds a human:\n'
+    printf '\nNeeds a human (orchestra resolve <task>):\n'
     for _e in "$@"; do
       printf '  %s\n' "${_e#"$(project_root)"/}"
     done
   fi
+  return 0
 }

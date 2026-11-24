@@ -170,6 +170,16 @@ calls() { ls "$FAKE_LOG" 2>/dev/null | grep -c "^$1-.*\.prompt$" || true; }
   [[ "$(decision '.reasons | join(" ")' T3)" == *'task area "auth" is always_human'* ]]
 }
 
+@test "gate: a migration area escalates an ACCEPT even outside always_human" {
+  jq '.escalation.always_human = [] | del(.vcs)' orchestra.config.json > c && mv c orchestra.config.json
+  jq '.tasks[4].areas = ["migration"]' plan.json > p && mv p plan.json
+  export FAKE_REVIEWER_JSON=$(verdict T5 ACCEPT)
+  export FAKE_CONFIRMER_JSON=$(confirm T5 true ACCEPT)
+  run review_run T5 "$PROJ"
+  [ "$output" = "ESCALATE" ]
+  [[ "$(decision '.reasons | join(" ")' T5)" == *'"migration" is a gated action'* ]]
+}
+
 @test "hard rule: a file outside the task scope escalates" {
   printf 'x\n' > src/other.ts
   export FAKE_REVIEWER_JSON=$(verdict T5 ACCEPT)

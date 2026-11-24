@@ -412,9 +412,22 @@ _dm_summary() {
   return "$ORCHESTRA_EXIT_NEEDS_HUMAN"
 }
 
+# daemon_running — an `orchestra go` run is active for this project.
+daemon_running() {
+  _rp=$(bus_dir)/run.pid
+  [ -f "$_rp" ] && kill -0 "$(cat "$_rp")" 2>/dev/null
+}
+
 # daemon_loop — run tasks until none can make progress or a stop is requested.
 daemon_loop() {
   bus_init
+  if daemon_running; then
+    die "another orchestra go is already running for this project (pid $(cat "$(bus_dir)/run.pid"))"
+  fi
+  printf '%s\n' "$$" >"$(bus_dir)/run.pid"
+  _RUN_PID_FILE=$(bus_dir)/run.pid
+  trap 'rm -f "$_RUN_PID_FILE"' EXIT
+  trap 'exit 130' INT TERM
   rm -f "$(bus_dir)/stop"
   printf '\nPhase 2: running the plan (branch orchestra/run)\n'
   while :; do

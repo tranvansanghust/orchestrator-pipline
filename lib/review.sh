@@ -247,9 +247,14 @@ _rv_rules() {
   _hi=$(jq -r '[.concerns[]? | select(.severity == "high" or .severity == "critical")] | length' "$_rvf")
   [ "$_hi" = 0 ] || printf 'reviewer raised %s high/critical concern(s)\n' "$_hi"
   _human=$(config_get '.escalation.always_human[]?')
+  # Gated actions that are also task areas (vcs.gate defaults to all of them).
+  _gated=$(config_get '(.vcs.gate // ["push", "deploy", "delete", "migration"])[]
+    | select(. == "migration" or . == "delete")')
   for _a in $(plan_task "$_rt" '.areas[]?'); do
     if printf '%s\n' "$_human" | grep -qxF -- "$_a"; then
       printf 'task area "%s" is always_human\n' "$_a"
+    elif printf '%s\n' "$_gated" | grep -qxF -- "$_a"; then
+      printf 'task area "%s" is a gated action (vcs.gate)\n' "$_a"
     fi
   done
   _scope=$(plan_task "$_rt" '.scope[]?')

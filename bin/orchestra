@@ -37,10 +37,11 @@ Commands:
   go [--profile P] [--refreeze] [--no-run]
                      Readiness check, freeze docs/, run phase 2 (resumes a
                      stopped run; --no-run only approves and freezes)
-  status             Show task states and open escalations
-  resolve <task> <accept|reject|amend-spec> [message]
-                     Resolve an escalated task
-  stop               Stop the phase-2 daemon
+  status [--watch]   Show task states, requirements and open escalations
+  resolve <task> [accept | reject "<msg>" | retry ["<msg>"] | amend-spec "<msg>"]
+                     Resolve a blocked or escalated task (no action: open
+                     Claude with the escalation loaded)
+  stop               Stop a running `orchestra go` after its current step
   version            Print the engine version
   help               Show this help
 EOF
@@ -51,14 +52,17 @@ cmd=${1:-help}
 
 case $cmd in
   init)    orchestra_load init;             init_project "$@" ;;
-  design)  orchestra_load tmux;             tmux_open_cockpit "$@" ;;
+  design)  orchestra_load config tmux;      tmux_open_cockpit "$@" ;;
   go)
     orchestra_load config bus statemachine scheduler adapter pool worktree \
-      runner review escalation readiness daemon
+      runner review escalation tmux readiness daemon
     go_main "$@"
     ;;
   status)  orchestra_load config bus statemachine; status_main "$@" ;;
-  resolve) orchestra_load escalation;              escalation_resolve "$@" ;;
+  resolve)
+    orchestra_load config bus statemachine worktree escalation tmux readiness daemon
+    escalation_resolve "$@"
+    ;;
   stop)    orchestra_load daemon;                  daemon_stop "$@" ;;
   version|--version|-v) cat "$ORCHESTRA_HOME/VERSION" ;;
   help|--help|-h) usage ;;

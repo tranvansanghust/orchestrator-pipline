@@ -1,0 +1,7 @@
+#!/bin/sh
+# fake-planner — stands in for the interactive `claude` TUI in tests.
+# Records the directory it was started in and its arguments.
+{
+  printf 'cwd=%s\n' "$PWD"
+  printf '%s\n' "$@"
+} >"${FAKE_PLANNER_LOG:?FAKE_PLANNER_LOG must be set}"
