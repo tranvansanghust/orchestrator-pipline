@@ -31,7 +31,8 @@ case ":$PATH:" in
 esac
 
 missing=""
-for c in git jq tmux check-jsonschema claude; do
+for c in git jq check-jsonschema claude; do
   command -v "$c" >/dev/null 2>&1 || missing="$missing $c"
 done
-[ -z "$missing" ] || echo "missing dependencies:$missing"
+[ -z "$missing" ] || echo "missing required dependencies:$missing"
+echo "next: orchestra doctor   (checks dependencies; inside a project, also its config and agents)"

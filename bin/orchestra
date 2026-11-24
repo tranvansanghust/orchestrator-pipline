@@ -42,6 +42,7 @@ Commands:
                      Resolve a blocked or escalated task (no action: open
                      Claude with the escalation loaded)
   stop               Stop a running `orchestra go` after its current step
+  doctor             Check dependencies, and the config and agents of a project
   version            Print the engine version
   help               Show this help
 EOF
@@ -64,6 +65,7 @@ case $cmd in
     escalation_resolve "$@"
     ;;
   stop)    orchestra_load daemon;                  daemon_stop "$@" ;;
+  doctor)  orchestra_load config adapter pool doctor; doctor_main "$@" ;;
   version|--version|-v) cat "$ORCHESTRA_HOME/VERSION" ;;
   help|--help|-h) usage ;;
   *)

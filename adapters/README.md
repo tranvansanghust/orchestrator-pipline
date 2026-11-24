@@ -43,4 +43,4 @@ CLIs default to an interactive or disabled mode that never signals completion.
 | `claude.sh` | Implemented (`claude -p`), coding-agent role. |
 | `deepseek.sh` | Stub — normally runs through the opencode adapter. |
 | `kilo.sh` | Stub — TODO: verify non-interactive mode and "done" signal. |
-| `zcode.sh` | Stub — TODO: verify dynamic-workflow mode (off by default) and "done" signal. |
+| `zcode.sh` | Implemented, run-to-exit: `zcode -p <prompt> --cwd <dir> --mode yolo --workflow-mode disabled --json` (verified against zcode 0.17.1 `--help`). CLI found via `ORCHESTRA_ZCODE_BIN`, PATH, or ZCode.app. |

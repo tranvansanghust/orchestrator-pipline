@@ -76,6 +76,10 @@ go_main() {
         ;;
     esac
   done
+  if ! _cvw=$(config_validate); then
+    die "orchestra.config.json is invalid (see above); orchestra doctor shows details"
+  fi
+  if [ -n "$_cvw" ]; then log_warn "$_cvw"; fi
   [ -n "$_profile" ] || _profile=$(config_get '.profile')
 
   if [ -f "$(bus_dir)/frozen.json" ] && [ "$(plan_get '.approved')" = true ] && [ "$_refreeze" = 0 ]; then

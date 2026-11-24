@@ -2,67 +2,148 @@
 
 Công cụ điều phối coding tự động, cài một lần rồi dùng cho mọi project.
 
-- **Pha 1 (thiết kế):** bạn làm việc với Claude Code TUI để soạn hồ sơ SDLC trong `docs/`, kèm `plan.json` và `traceability.json`.
-- **Pha 2 (thực thi):** sau `orchestra go`, một daemon giao task cho các agent CLI (OpenCode/GLM-4.6, DeepSeek…). Mỗi task chạy trong một git worktree riêng. Máy chạy test/typecheck/build trước, qua rồi mới đến `claude -p` review. Chỗ nào không chắc chắn thì hệ thống kéo người về xử lý.
+- **Pha 1 — thiết kế (người ⇄ Claude):** bạn làm việc với Claude Code để soạn bộ hồ sơ SDLC trong `docs/` (PRD, SRS, kiến trúc, ADR, OpenAPI, data model, test plan, task breakdown, review brief), kèm `plan.json` và `traceability.json`.
+- **Pha 2 — thực thi (tự động):** `orchestra go` kiểm tra hồ sơ đã đủ chưa, đóng băng nó, rồi giao từng task cho các agent CLI (Claude, OpenCode/GLM, DeepSeek, ZCode…), chạy song song khi có nhiều agent. Mỗi task chạy trong một git worktree riêng. Máy chạy test/typecheck/build trước, đạt rồi mới đến Claude review hai lớp. Chỗ nào không chắc chắn thì dừng lại và chờ người.
 
-Thiết kế đầy đủ: [`ORCHESTRA-context.md`](ORCHESTRA-context.md). Các quyết định kỹ thuật của engine: [`docs/decisions/`](docs/decisions/).
+Thiết kế gốc: [`ORCHESTRA-context.md`](ORCHESTRA-context.md). Mọi quyết định kỹ thuật: [`docs/decisions/`](docs/decisions/) (ADR-0001 → 0012).
 
-> **Trạng thái: v0.1.0, đang xây.** Đã chạy được: `orchestra init` (scaffold vào project), `orchestra go` (readiness check + đóng băng hồ sơ), runner VERIFY, review hai lớp (reviewer + confirmer + luật escalate cứng), adapter `mock`/`opencode`/`claude`. Chưa có: vòng lặp daemon pha 2, kênh escalation; `design`/`status`/`resolve`/`stop` trả exit code 3.
+> **Trạng thái: v0.2.0.** Chạy được trọn vòng: `init` → thiết kế với Claude → `go` (readiness, đóng băng, chạy song song, VERIFY, review hai lớp, merge) → `resolve` khi cần người → integration build. Đã kiểm chứng bằng 145 test offline (`make check`), cùng test online với Claude thật.
 
 ## Yêu cầu
 
-| Công cụ | Dùng cho |
-|---|---|
-| POSIX `sh`, `git`, `jq` | engine (macOS có sẵn) |
-| `check-jsonschema` | validate schema (`brew install check-jsonschema`) |
-| `tmux` | cockpit, pane cho agent |
-| `claude` | pha 1 (TUI) và reviewer pha 2 (`claude -p`) |
-| `opencode` | executor chính |
-| `shellcheck`, `bats-core` | phát triển engine |
+| Công cụ | Dùng cho | Bắt buộc |
+|---|---|---|
+| POSIX `sh`, `git`, `jq` | engine | có (macOS có sẵn) |
+| `check-jsonschema` | validate plan/config/verdict | có — `brew install check-jsonschema` hoặc `pipx install check-jsonschema` |
+| `claude` (Claude Code) | pha 1, reviewer và confirmer ở pha 2 | có |
+| ít nhất một agent CLI | viết code ở pha 2 | có — `claude`, `opencode`, hoặc ZCode |
+| `tmux` | cockpit `orchestra design` | không (thiếu thì mở Claude ngay tại chỗ) |
+| `redocly` hoặc `swagger-cli` | validate OpenAPI đầy đủ | không (thiếu thì kiểm nhẹ và báo NOTE) |
+
+Chạy `orchestra doctor` để kiểm tra máy và project.
 
 ## Cài đặt
 
 ```sh
 git clone <repo> ~/.orchestra
-~/.orchestra/install.sh            # symlink vào ~/.local/bin (đổi bằng --prefix DIR)
-orchestra help
+~/.orchestra/install.sh           # symlink vào ~/.local/bin (đổi bằng --prefix DIR)
+orchestra doctor
 ```
 
-Muốn nâng cấp, chạy `git pull` trong `~/.orchestra`: mọi project dùng engine này sẽ nhận bản mới.
+Nâng cấp: `git -C ~/.orchestra pull`. Mọi project dùng engine này đều nhận bản mới; project ghim `orchestra_version`, lệch major thì engine cảnh báo.
+
+## Từ con số 0 đến lúc chạy
+
+```sh
+cd my-project                     # một git repo, có ít nhất một commit
+orchestra init                    # docs/ trống, orchestra.config.json, plan.json, .claude/commands/
+```
+
+**1. Sửa `orchestra.config.json`.** `init` đã điền sẵn `stack` theo project (node/ts, python, go, rust). Bạn chọn:
+- `agents`: agent nào được dùng, mỗi agent có `adapter` (`claude`, `opencode`, `zcode`, `mock`), `model` và `skills`;
+- `escalation.always_human`: các vùng luôn phải có người duyệt (`auth`, `payment`, `migration`…);
+- `profile`: `lite` / `standard` / `strict` (độ chặt của readiness check).
+
+**2. Thiết kế với Claude.**
+
+```sh
+orchestra design                  # tmux: Claude bên trái, dashboard bên phải
+```
+
+Trong Claude, chạy lần lượt:
+
+```
+/prd  /srs  /architect  /adr "…"  /apispec  /datamodel  /testplan  /breakdown  /plan  /handoff  /go
+```
+
+Mỗi lệnh ghi một tầng hồ sơ và kiểm tra nó khớp với các tầng khác. `/go` chạy readiness check, cùng bạn sửa các lỗ hổng, rồi đóng băng hồ sơ.
+
+**3. Commit hồ sơ rồi chạy pha 2.**
+
+```sh
+git add docs plan.json traceability.json && git commit -m "design"
+orchestra go                      # chạy tới khi xong hoặc cần người; Ctrl-C / orchestra stop để dừng
+orchestra status --watch          # ở một terminal khác
+```
+
+`orchestra go` có thể chạy lại bất cứ lúc nào: nó tiếp tục từ chỗ dừng. Nếu bạn sửa hồ sơ sau khi đóng băng, nó liệt kê các file đã đổi và đòi `--refreeze`.
+
+**4. Khi cần người.** Task bị BLOCKED/ESCALATED nằm trong `.bus/escalations/`. Các task khác vẫn chạy tiếp.
+
+```sh
+orchestra resolve T3              # mở Claude đã nạp sẵn ngữ cảnh của escalation
+orchestra resolve T3 accept                     # merge nguyên trạng
+orchestra resolve T3 reject "dùng hằng số"      # trả lại agent kèm lời nhắn
+orchestra resolve T3 retry                      # vấn đề bên ngoài đã sửa xong
+orchestra resolve T3 amend-spec "sửa FR-4"      # sau khi đã sửa hồ sơ
+orchestra go                                    # chạy tiếp
+```
+
+**5. Lấy kết quả.** Toàn bộ code đã duyệt nằm trên nhánh `orchestra/run`. Bạn review rồi merge vào nhánh của mình. Engine **không bao giờ** đụng vào nhánh bạn đang làm và **không bao giờ** push.
+
+## Lệnh
+
+| Lệnh | Việc |
+|---|---|
+| `orchestra init [--force]` | scaffold vào project hiện tại |
+| `orchestra design` | cockpit tmux (Claude + dashboard) |
+| `orchestra go [--profile P] [--refreeze] [--no-run]` | readiness → đóng băng → chạy pha 2 (tiếp tục nếu đã chạy dở) |
+| `orchestra status [--watch]` | trạng thái task, FR, hộp thư cần người |
+| `orchestra resolve <task> [action] [msg]` | xử lý task bị BLOCKED/ESCALATED |
+| `orchestra stop` | dừng run sau bước hiện tại |
+| `orchestra doctor` | kiểm tra dependency, agent và project |
+
+Exit code: `0` xong (hoặc đã dừng), `1` lỗi, `2` sai cú pháp, `4` có task cần người.
+
+## Cách pha 2 giữ an toàn
+
+- **Máy kiểm trước, Claude review sau.** Agent không tự tuyên bố "xong"; runner chạy `done_when` thật.
+- **Review hai lớp.** Reviewer (không có tool, chỉ đọc context pack) ra verdict có bằng chứng gắn nguồn. Confirmer kiểm lại mọi ACCEPT và chỉ được hạ mức tin cậy, không bao giờ nâng.
+- **Luật cứng cho ACCEPT:** confidence thấp, concern high/critical, file ngoài `scope`, vùng `always_human` hay `migration`/`delete` → ESCALATE. Reviewer cần người (`needs_human`) → ESCALATE.
+- **Nội dung agent viết** (diff, test) được bọc trong `<untrusted-data>` với id ngẫu nhiên.
+- **Tích hợp có kiểm tra:** trước khi merge, nhánh task được cập nhật theo `orchestra/run` và chạy lại VERIFY nếu có thay đổi.
+- **Có trần ở mọi nơi:** `max_verify_rounds`, `max_reject_rounds`, `agent_timeout_s`, `review.max_budget_usd`, `review.max_pack_bytes`.
+
+## Agent
+
+| Adapter | Gọi | Ghi chú |
+|---|---|---|
+| `claude` | `claude -p` | |
+| `opencode` | `opencode run --format json --auto` | GLM, DeepSeek… qua trường `model` |
+| `zcode` | `zcode -p --cwd --json` | tìm CLI qua `ORCHESTRA_ZCODE_BIN`, PATH, hoặc ZCode.app |
+| `mock` | không gọi mạng | dùng cho test |
+| `kilo`, `deepseek` | stub | chưa kiểm chứng |
+
+Thêm agent mới = viết một file `adapters/<tên>.sh` với 4 hàm (xem [`adapters/README.md`](adapters/README.md)), engine không cần sửa.
 
 ## Cấu trúc
 
 ```
-bin/orchestra     entrypoint: init | design | go | status | resolve | stop
-lib/              các module (state machine, scheduler, pool, runner, review, escalation…)
-adapters/         mỗi CLI một file, cùng một interface 4 hàm (xem adapters/README.md)
-commands/         slash-command cho pha 1, `init` sẽ copy vào .claude/commands/
-templates/        khung trống: docs/ 10 tầng + specs, config, plan, traceability; `init` copy sang project
-examples/         blog-api: bộ hồ sơ pha 1 điền đủ, dùng làm mẫu và fixture cho test
-profiles/         lite | standard | strict: những readiness check bắt buộc
-schemas/          JSON Schema cho config, plan, traceability, task, verdict, escalation
+bin/orchestra     entrypoint
+lib/              state machine, scheduler, pool, runner, review, escalation, daemon…
+adapters/         mỗi CLI một file, cùng interface 4 hàm
+commands/         slash command pha 1 (init copy vào .claude/commands/)
+templates/        khung docs/, config, plan, traceability, rubric, prompt reviewer
+profiles/         lite | standard | strict
+schemas/          JSON Schema: config, plan, traceability, task, verify, verdict, confirmation, decision
+examples/         blog-api: bộ hồ sơ pha 1 điền đủ
 test/             bats
 ```
 
-Engine không chứa thông tin riêng của project nào. Mọi khác biệt giữa các project phải đi qua `orchestra.config.json` hoặc adapter.
+Trạng thái lúc chạy nằm trong `.bus/` của project (gitignore): task, prompt, log của agent, verify report, các vòng review, escalation, `log.jsonl`. Không có gì chỉ nằm trong bộ nhớ.
 
 ## Phát triển
 
 ```sh
-make lint      # shellcheck -s sh
-make schemas   # schema hợp lệ + templates/examples khớp schema
-make test      # bats test/
-make check     # chạy cả ba
+make check                              # shellcheck + schema + toàn bộ test offline (~5 phút)
+ORCHESTRA_ONLINE=1 bats test/*_online.bats   # gọi Claude/opencode thật, tốn tiền API
 ```
 
-## Lộ trình
+CI: `.github/workflows/check.yml` chạy `make check` trên Linux và macOS.
 
-- [x] 0. Skeleton repo
-- [x] 1. Artifact nền: schemas, templates docs/, traceability, readiness check, `init`, `go`
-- [x] 2. Runner VERIFY (`done_when`)
-- [x] Adapter interface + `mock`/`opencode`/`claude` (một phần bước 5)
-- [x] 3. Review + context pack (`claude -p` → verdict → confirmer → luật cứng)
-- [ ] 4. Daemon end-to-end với 1 agent
-- [ ] 5. Pool nhiều agent + worktree + integration build
-- [ ] 6. Escalation UX: `/resolve`, dashboard, gates
-- [ ] 7. Đóng gói: `orchestra init`, versioning, CI
+## Chưa làm
+
+- Adapter `kilo` (chưa có CLI để kiểm chứng) và `deepseek` dạng CLI riêng (hiện chạy qua opencode).
+- Agentic review (cho reviewer đọc file) cho task phức tạp.
+- Pane-parse adapter cho CLI chỉ có TUI.
+- Pha 1 sinh sẵn code test trước khi `go` (hiện agent viết test theo test plan).

@@ -49,6 +49,24 @@ brain_model() {
   printf '%s\n' "$_bm"
 }
 
-# config_validate — validate against schemas/config.schema.json and warn when
-# the config's orchestra_version major differs from VERSION.
-config_validate() { not_implemented config_validate; }
+# config_validate — validate against schemas/config.schema.json (error on
+# stderr, return 1) and print a warning on stdout when the project's pinned
+# orchestra_version has a different major than the engine.
+config_validate() {
+  _cvf=$(config_path)
+  if command -v check-jsonschema >/dev/null 2>&1; then
+    if ! _cve=$(check-jsonschema --schemafile "$ORCHESTRA_HOME/schemas/config.schema.json" "$_cvf" 2>&1); then
+      printf 'does not match schemas/config.schema.json: %s\n' \
+        "$(printf '%s' "$_cve" | grep -v '^Schema validation errors' | tail -n 2 | tr '\n' ' ')" >&2
+      return 1
+    fi
+  else
+    printf 'check-jsonschema not installed; config not validated\n'
+  fi
+  _pin=$(config_get '.orchestra_version // ""')
+  _eng=$(cat "$ORCHESTRA_HOME/VERSION")
+  if [ -n "$_pin" ] && [ "${_pin%%.*}" != "${_eng%%.*}" ]; then
+    printf 'project pinned to orchestra %s but the engine is %s (major differs; read CHANGELOG.md before running)\n' "$_pin" "$_eng"
+  fi
+  return 0
+}
