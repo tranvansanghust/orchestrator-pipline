@@ -31,13 +31,12 @@ setup() {
   [ "$status" -eq 2 ]
 }
 
-@test "unimplemented commands exit 3" {
-  # init, go, status and stop are implemented (their own test files); never run
-  # init or stop here, they would write into the orchestra repo itself.
-  for c in design resolve; do
-    run "$ORCHESTRA" "$c"
-    [ "$status" -eq 3 ]
-  done
+@test "resolve without a task is a usage error" {
+  # Every command is implemented and has its own test file. Commands that act
+  # on a project (init, go, design, stop, ...) are never run here: they would
+  # write into the orchestra repo itself.
+  run "$ORCHESTRA" resolve
+  [ "$status" -eq 2 ]
 }
 
 @test "works when invoked through a symlink" {

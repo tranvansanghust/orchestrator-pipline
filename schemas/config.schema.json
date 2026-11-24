@@ -85,6 +85,16 @@
           "minimum": 1,
           "default": 1800,
           "description": "An agent run longer than this is stopped; the attempt then goes through VERIFY as usual."
+        },
+        "max_parallel": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Tasks running at once. Defaults to the number of agents; each agent runs one task at a time."
+        },
+        "integration": {
+          "enum": ["end", "merge", "off"],
+          "default": "end",
+          "description": "When to run stack.integration on orchestra/run: once at the end of a run that merged something, after every merge, or never."
         }
       }
     },

@@ -99,10 +99,14 @@ _res_accept() {
   [ "$(jq -r '.passed' "$(bus_dir)/verify/$1.json" 2>/dev/null)" = true ] \
     || die "$1 has no passing VERIFY report; it cannot be accepted"
   [ -d "$(_wt_dir "$1")" ] || die "$1 has no worktree (.worktrees/$1)"
-  worktree_commit "$1" "orchestra: $1 $(plan_task "$1" '.desc')" \
-    || die "could not commit the work in .worktrees/$1"
-  worktree_merge "$1" \
-    || die "merging orchestra/$1 into orchestra/run failed (conflict); resolve it by hand in .worktrees/_run"
+  if daemon_integrate "$1"; then :; else
+    case $? in
+      1) die "could not commit the work in .worktrees/$1" ;;
+      2) die "orchestra/$1 conflicts with work merged into orchestra/run since; resolve the conflict in .worktrees/$1 (git merge orchestra/run), commit, and accept again" ;;
+      3) die "VERIFY fails once orchestra/run is merged into orchestra/$1; use reject to send it back to the agent" ;;
+      *) die "merging orchestra/$1 into orchestra/run failed" ;;
+    esac
+  fi
   sm_transition "$1" MERGED "accepted by a human"
   worktree_remove "$1"
   sm_transition "$1" DONE "merged"

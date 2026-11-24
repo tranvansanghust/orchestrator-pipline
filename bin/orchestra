@@ -60,7 +60,7 @@ case $cmd in
     ;;
   status)  orchestra_load config bus statemachine; status_main "$@" ;;
   resolve)
-    orchestra_load config bus statemachine worktree escalation tmux readiness daemon
+    orchestra_load config bus statemachine worktree runner escalation tmux readiness daemon
     escalation_resolve "$@"
     ;;
   stop)    orchestra_load daemon;                  daemon_stop "$@" ;;

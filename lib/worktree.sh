@@ -61,12 +61,14 @@ worktree_create() {
   _root=$(project_root)
   _wt=$(_wt_dir "$1")
   _br=orchestra/$1
+  bus_lock git
   if git -C "$_root" show-ref --verify -q "refs/heads/$_br"; then
-    git -C "$_root" worktree add "$_wt" "$_br" >/dev/null 2>&1 || return 1
+    git -C "$_root" worktree add "$_wt" "$_br" >/dev/null 2>&1 || { bus_unlock git; return 1; }
   else
-    git -C "$_root" worktree add -b "$_br" "$_wt" "$_WT_RUN" >/dev/null 2>&1 || return 1
+    git -C "$_root" worktree add -b "$_br" "$_wt" "$_WT_RUN" >/dev/null 2>&1 || { bus_unlock git; return 1; }
   fi
   _base=$(git -C "$_root" merge-base "$_WT_RUN" "$_br")
+  bus_unlock git
   # shellcheck disable=SC2016 # jq variables
   task_update "$1" '.base = $b | .branch = $br | .worktree = $w' \
     --arg b "$_base" --arg br "$_br" --arg w "$_wt"
@@ -102,8 +104,20 @@ worktree_commit() {
   fi
 }
 
+# worktree_update <task-id> — merge what reached orchestra/run since the task
+# branched into the task branch. On conflict the merge is aborted and 1 is
+# returned. Caller holds the git lock.
+worktree_update() {
+  _wt=$(_wt_dir "$1")
+  if ! _wt_git -C "$_wt" merge -q --no-edit "$_WT_RUN" >/dev/null 2>&1; then
+    git -C "$_wt" merge --abort >/dev/null 2>&1 || true
+    return 1
+  fi
+}
+
 # worktree_merge <task-id> — merge orchestra/<task-id> into orchestra/run.
-# On conflict the merge is aborted and 1 is returned.
+# On conflict the merge is aborted and 1 is returned. Caller holds the git
+# lock (or no run is active).
 worktree_merge() {
   _run=$(_wt_dir _run)
   if ! _wt_git -C "$_run" merge -q --no-ff -m "orchestra: merge $1 — $(plan_task "$1" '.desc')" "orchestra/$1" >/dev/null 2>&1; then
@@ -114,5 +128,7 @@ worktree_merge() {
 
 # worktree_remove <task-id> — drop the task worktree; the branch is kept.
 worktree_remove() {
+  bus_lock git
   git -C "$(project_root)" worktree remove --force "$(_wt_dir "$1")" >/dev/null 2>&1 || true
+  bus_unlock git
 }

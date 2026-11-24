@@ -323,12 +323,22 @@ _dm_run_task() {
         if _v=$(review_run "$_t" "$(task_get "$_t" '.worktree')" 2>"$(_dm_tdir "$_t")/review.err"); then :; else _v=ERROR; fi
         case $_v in
           ACCEPT)
-            if ( worktree_commit "$_t" "orchestra: $_t $(plan_task "$_t" '.desc')" && worktree_merge "$_t" ) >/dev/null 2>&1; then
-              sm_transition "$_t" MERGED "accepted, merged into orchestra/run"
-            else
-              _dm_escalate "$_t" merge "accepted, but merging orchestra/$_t into orchestra/run failed"
-              return 0
-            fi
+            if daemon_integrate "$_t" >/dev/null 2>&1; then _irc=0; else _irc=$?; fi
+            case $_irc in
+              0) sm_transition "$_t" MERGED "accepted, merged into orchestra/run" ;;
+              2)
+                _dm_escalate "$_t" merge "accepted, but it conflicts with work merged into orchestra/run meanwhile"
+                return 0
+                ;;
+              3)
+                _dm_escalate "$_t" integration "accepted, but VERIFY fails once the work merged into orchestra/run meanwhile is brought in"
+                return 0
+                ;;
+              *)
+                _dm_escalate "$_t" merge "accepted, but merging orchestra/$_t into orchestra/run failed"
+                return 0
+                ;;
+            esac
             ;;
           REJECT)
             _n=$(($(task_get "$_t" '.reject_rounds') + 1))
@@ -361,6 +371,77 @@ _dm_run_task() {
         ;;
     esac
   done
+}
+
+# daemon_integrate <task-id> — commit the task's work, bring in whatever was
+# merged into orchestra/run since it branched (re-running VERIFY if anything
+# came in), then merge it into orchestra/run. Returns 0 merged, 1 commit
+# failed, 2 conflict, 3 VERIFY fails on the updated branch, 4 merge failed.
+daemon_integrate() {
+  _it=$1
+  _iwt=$(_wt_dir "$_it")
+  worktree_commit "$_it" "orchestra: $_it $(plan_task "$_it" '.desc')" || return 1
+  bus_lock git
+  _ihead=$(git -C "$_iwt" rev-parse HEAD)
+  if ! worktree_update "$_it"; then
+    bus_unlock git
+    return 2
+  fi
+  if [ "$(git -C "$_iwt" rev-parse HEAD)" != "$_ihead" ]; then
+    if ! ( runner_verify "$_it" "$_iwt" ) >/dev/null 2>&1; then
+      bus_unlock git
+      return 3
+    fi
+  fi
+  if ! worktree_merge "$_it"; then
+    bus_unlock git
+    return 4
+  fi
+  if [ "$(config_get '.execution.integration // "end"')" = merge ]; then
+    daemon_integration >/dev/null 2>&1 || true
+  fi
+  bus_unlock git
+}
+
+# daemon_integration — run stack.integration on orchestra/run (after
+# stack.setup) and record .bus/integration.json. Returns 0 passed, 1 failed,
+# 2 nothing to run. A failure is put in the inbox as integration.md.
+daemon_integration() {
+  _icmd=$(config_get '.stack.integration // empty')
+  [ -n "$_icmd" ] || return 2
+  _irun=$(_wt_dir _run)
+  _ilog=$(bus_dir)/integration.log
+  : >"$_ilog"
+  _isetup=$(config_get '.stack.setup // empty')
+  _ie=0
+  if [ -n "$_isetup" ]; then
+    ( cd "$_irun" && sh -c "$_isetup" ) >>"$_ilog" 2>&1 || _ie=$?
+  fi
+  if [ "$_ie" = 0 ]; then
+    ( cd "$_irun" && sh -c "$_icmd" ) >>"$_ilog" 2>&1 && _ie=0 || _ie=$?
+  fi
+  jq -n --arg c "$_icmd" --argjson e "$_ie" --arg l "$_ilog" --arg at "$(now_iso)" \
+    --arg rev "$(git -C "$_irun" rev-parse HEAD)" \
+    '{passed: ($e == 0), cmd: $c, exit: $e, log: $l, commit: $rev, at: $at}' \
+    >"$(bus_dir)/integration.json"
+  bus_log "$(jq -c '{event: "integration"} + .' "$(bus_dir)/integration.json")"
+  if [ "$_ie" = 0 ]; then
+    rm -f "$(bus_dir)/escalations/integration.md"
+    return 0
+  fi
+  mkdir -p "$(bus_dir)/escalations"
+  {
+    printf '# Integration build failed\n\n'
+    printf -- '- Command: `%s` (exit %s)\n' "$_icmd" "$_ie"
+    printf -- '- On: orchestra/run at %s\n' "$(git -C "$_irun" rev-parse --short HEAD)"
+    printf -- '- Log: .bus/integration.log\n\n'
+    printf 'Each task passed on its own; together they do not. Look at the log, fix the\n'
+    printf 'design or the tasks involved (orchestra resolve ... amend-spec), then run\n'
+    printf '`orchestra go` again.\n\n```\n'
+    tail -n 40 "$_ilog"
+    printf '```\n'
+  } >"$(bus_dir)/escalations/integration.md"
+  return 1
 }
 
 # _dm_trace_status — FR status from task states, in .bus/traceability.status.json.
@@ -401,8 +482,12 @@ _dm_summary() {
     return 0
   fi
   printf '\nRun finished: %s done, %s blocked, %s escalated, %s waiting on them.\n' "$_done" "$_blocked" "$_esc" "$_wait"
+  case ${1:-} in
+    0) printf 'Integration build passed: `%s`.\n' "$(jq -r '.cmd' "$(bus_dir)/integration.json")" ;;
+    1) printf 'Integration build FAILED: see .bus/escalations/integration.md.\n' ;;
+  esac
   printf 'Merged work is on branch orchestra/run; review it and merge it into your branch when ready.\n'
-  if [ $((_blocked + _esc + _wait)) -eq 0 ]; then
+  if [ $((_blocked + _esc + _wait)) -eq 0 ] && [ ! -f "$(bus_dir)/escalations/integration.md" ]; then
     return 0
   fi
   printf 'Needs a human:\n'
@@ -418,7 +503,9 @@ daemon_running() {
   [ -f "$_rp" ] && kill -0 "$(cat "$_rp")" 2>/dev/null
 }
 
-# daemon_loop — run tasks until none can make progress or a stop is requested.
+# daemon_loop — run up to execution.max_parallel tasks at once (one per agent)
+# until none can make progress or a stop is requested; then run the
+# integration build and summarise.
 daemon_loop() {
   bus_init
   if daemon_running; then
@@ -426,22 +513,78 @@ daemon_loop() {
   fi
   printf '%s\n' "$$" >"$(bus_dir)/run.pid"
   _RUN_PID_FILE=$(bus_dir)/run.pid
-  trap 'rm -f "$_RUN_PID_FILE"' EXIT
+  trap '_rc=$?; rm -f "$_RUN_PID_FILE"
+    case $_rc in 0 | 4 | 130) ;; *) printf "orchestra: phase 2 stopped unexpectedly (exit %s); state is kept in .bus/, run orchestra go to resume\n" "$_rc" >&2 ;; esac' EXIT
   trap 'exit 130' INT TERM
   rm -f "$(bus_dir)/stop"
-  printf '\nPhase 2: running the plan (branch orchestra/run)\n'
+
+  _max=$(config_get '.execution.max_parallel // (.agents | length)')
+  [ "$_max" -ge 1 ] 2>/dev/null || _max=1
+  _run_rev=$(git -C "$(_wt_dir _run)" rev-parse HEAD)
+  printf '\nPhase 2: running the plan on branch orchestra/run, up to %s task(s) at once\n' "$_max"
+
+  _nl='
+'
+  _running="" # one line per worker: <pid> <task> <agent> <state when launched>
+  _stalled=""
   while :; do
-    if _dm_stop_requested; then break; fi
-    _next=$(scheduler_next)
-    [ -n "$_next" ] || break
-    _before=$(sm_state "$_next")
-    _dm_run_task "$_next"
-    if ! _dm_stop_requested && [ "$(sm_state "$_next")" = "$_before" ]; then
-      die "task $_next made no progress from $_before (engine bug)"
+    # Reap workers that finished (each leaves worker.done on exit).
+    _keep=""
+    while read -r _p _rt _ra _rs; do
+      [ -n "$_p" ] || continue
+      if [ ! -f "$(_dm_tdir "$_rt")/worker.done" ]; then
+        _keep="$_keep$_p $_rt $_ra $_rs$_nl"
+        continue
+      fi
+      wait "$_p" 2>/dev/null || true
+      if ! _dm_stop_requested && [ "$(sm_state "$_rt")" = "$_rs" ]; then
+        log_warn "task $_rt made no progress from $_rs; not retrying it in this run"
+        _stalled="$_stalled$_rt$_nl"
+      fi
+    done <<EOF
+$_running
+EOF
+    _running=$_keep
+
+    if _dm_stop_requested; then
+      [ -n "$_running" ] || break
+      sleep 1
+      continue
     fi
+
+    # Launch workers while there is room, a runnable task and a free agent.
+    while [ "$(printf '%s' "$_running" | grep -c .)" -lt "$_max" ]; do
+      _ex=$(printf '%s' "$_running" | awk '{ print $2 }'; printf '%s' "$_stalled")
+      _busy=$(printf '%s' "$_running" | awk '$3 != "-" { print $3 }')
+      _pick=$(scheduler_next "$_ex" "$_busy")
+      [ -n "$_pick" ] || break
+      _pt=${_pick% *}
+      _pa=${_pick#* }
+      if [ "$_pa" != - ]; then
+        task_update "$_pt" '.agent = $a' --arg a "$_pa"
+      fi
+      _ps=$(sm_state "$_pt")
+      _mk=$(_dm_tdir "$_pt")/worker.done
+      mkdir -p "$(_dm_tdir "$_pt")"
+      rm -f "$_mk"
+      ( trap ': >"$_mk"' EXIT; _dm_run_task "$_pt" ) &
+      _running="$_running$! $_pt $_pa $_ps$_nl"
+    done
+
+    [ -n "$_running" ] || break
+    sleep 1
   done
+
+  _integ=""
+  if ! _dm_stop_requested && [ "$(config_get '.execution.integration // "end"')" = end ] \
+    && [ "$(git -C "$(_wt_dir _run)" rev-parse HEAD)" != "$_run_rev" ]; then
+    printf '\nIntegration build on orchestra/run\n'
+    if daemon_integration; then _integ=0; else _integ=$?; fi
+  elif [ -f "$(bus_dir)/escalations/integration.md" ]; then
+    _integ=1
+  fi
   _dm_trace_status
-  _dm_summary
+  _dm_summary "$_integ"
 }
 
 # daemon_stop — `orchestra stop`: ask a running `orchestra go` to stop after

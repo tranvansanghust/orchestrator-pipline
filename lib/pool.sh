@@ -34,9 +34,12 @@ pool_skills() {
 }
 
 # pool_agents_for_skill <skill> — names of agents advertising the skill.
+# Always returns 0 (an empty answer is a valid answer under set -e).
 pool_agents_for_skill() {
   _skill=$1
   config_get '.agents[].name' | while IFS= read -r _a; do
-    pool_skills "$_a" | grep -qx "$_skill" && printf '%s\n' "$_a"
+    if pool_skills "$_a" | grep -qx "$_skill"; then
+      printf '%s\n' "$_a"
+    fi
   done
 }
