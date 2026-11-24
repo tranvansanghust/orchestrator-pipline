@@ -43,6 +43,20 @@ erDiagram
 
 Index `posts (created_at DESC, id DESC)` serves keyset pagination (ADR-0001).
 
+## API schemas
+
+How each `components.schemas` entry in 04-api-spec.yaml relates to storage:
+
+| Schema | Stored as |
+|---|---|
+| User | `users` row, without `password_hash` |
+| Post | `posts` row |
+| Credentials | request body only; the password is hashed into `users.password_hash` |
+| NewPost | request body only; becomes a `posts` row |
+| Token | not stored (stateless JWT, ADR-0002) |
+| PostPage | not stored; a page of `posts` rows plus a cursor |
+| Error | not stored |
+
 ## Migration plan
 
 1. `0001_create_users` (T1) — rollback: drop table.

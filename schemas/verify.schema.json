@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orchestra.local/schemas/verify.schema.json",
+  "title": "verify.json",
+  "description": "Runner VERIFY report for one task: the machine evaluation of its done_when, written to .bus/verify/<task>.json. This is the trusted basis for REVIEW; the agent never declares itself done.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task", "passed", "checks", "verified_at"],
+  "properties": {
+    "task": { "type": "string", "pattern": "^T[0-9]+$" },
+    "passed": { "type": "boolean" },
+    "verified_at": { "type": "string", "minLength": 1 },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "cmd", "exit", "passed"],
+        "properties": {
+          "name": { "enum": ["tests", "typecheck", "build", "command"] },
+          "cmd": { "type": "string", "minLength": 1 },
+          "exit": { "type": "integer" },
+          "passed": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

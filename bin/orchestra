@@ -27,7 +27,7 @@ usage() {
 Usage: orchestra <command> [args]
 
 Commands:
-  init               Scaffold orchestra into the current project
+  init [--force]     Scaffold orchestra into the current project
   design             Open the phase-1 cockpit (Claude TUI in tmux)
   go [--profile P]   Run the readiness check, freeze docs/, start phase 2
   status             Show task states and open escalations
@@ -45,7 +45,7 @@ cmd=${1:-help}
 case $cmd in
   init)    orchestra_load init;             init_project "$@" ;;
   design)  orchestra_load tmux;             tmux_open_cockpit "$@" ;;
-  go)      orchestra_load readiness daemon; go_main "$@" ;;
+  go)      orchestra_load config readiness daemon; go_main "$@" ;;
   status)  orchestra_load bus statemachine; status_main "$@" ;;
   resolve) orchestra_load escalation;       escalation_resolve "$@" ;;
   stop)    orchestra_load daemon;           daemon_stop "$@" ;;

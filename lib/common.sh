@@ -49,3 +49,36 @@ project_root() {
 bus_dir() {
   printf '%s/.bus\n' "$(project_root)"
 }
+
+# plan_path — the project's plan.json; fail if absent.
+plan_path() {
+  _plan=$(project_root)/plan.json
+  [ -f "$_plan" ] || die "no plan.json in $(project_root) (run: orchestra design, then /plan)"
+  printf '%s\n' "$_plan"
+}
+
+# plan_get <jq-args...> <jq-filter> — read from plan.json with jq -r.
+plan_get() {
+  jq -r "$@" "$(plan_path)"
+}
+
+# plan_task <task-id> <jq-path> — read one field of a task entry.
+plan_task() {
+  _tid=$1
+  _tpath=$2
+  plan_get --arg t "$_tid" ".tasks[] | select(.id == \$t) | $_tpath"
+}
+
+# now_iso — UTC timestamp for logs and manifests.
+now_iso() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
+}
+
+# sha256 <file> — print the file's SHA-256, portably (Linux / macOS).
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
