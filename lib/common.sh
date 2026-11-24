@@ -2,6 +2,9 @@
 # Helpers shared by every orchestra module. Sourced by bin/orchestra after
 # ORCHESTRA_HOME is set. POSIX sh only: no arrays, no [[ ]], no bashisms.
 
+# Exit codes are used by bin/orchestra and other modules, which shellcheck
+# lints file by file.
+# shellcheck disable=SC2034
 ORCHESTRA_EXIT_OK=0
 ORCHESTRA_EXIT_ERROR=1
 ORCHESTRA_EXIT_USAGE=2
@@ -31,6 +34,8 @@ require_cmd() {
 # orchestra_load <module>... — source lib/<module>.sh.
 orchestra_load() {
   for _mod in "$@"; do
+    # Module name is dynamic by design; each module is linted on its own.
+    # shellcheck source=/dev/null
     . "$ORCHESTRA_HOME/lib/$_mod.sh"
   done
 }
