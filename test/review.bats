@@ -131,11 +131,27 @@ calls() { ls "$FAKE_LOG" 2>/dev/null | grep -c "^$1-.*\.prompt$" || true; }
   grep -q 'expected T5' .bus/review/T5/round-1/verdict-error-1.txt
 }
 
-@test "hard rule: low confidence escalates" {
-  export FAKE_REVIEWER_JSON=$(verdict T5 REJECT 0.5 '+ {fixes_requested: ["x"]}')
+@test "hard rule: low confidence escalates an ACCEPT" {
+  export FAKE_REVIEWER_JSON=$(verdict T5 ACCEPT 0.5)
+  export FAKE_CONFIRMER_JSON=$(confirm T5 true ACCEPT)
   run review_run T5 "$PROJ"
   [ "$output" = "ESCALATE" ]
   [[ "$(decision '.reasons[0]' T5)" == *"below the threshold 0.75"* ]]
+}
+
+@test "risk rules leave a REJECT alone: low confidence, high concern, out of scope" {
+  printf 'x\n' > src/other.ts
+  export FAKE_REVIEWER_JSON=$(verdict T5 REJECT 0.5 '+ {fixes_requested: ["x"], concerns: [{severity: "critical", detail: "d"}]}')
+  run review_run T5 "$PROJ"
+  [ "$output" = "REJECT" ]
+  [ "$(decision '.reasons | length' T5)" = "0" ]
+}
+
+@test "needs_human escalates even a REJECT" {
+  export FAKE_REVIEWER_JSON=$(verdict T5 REJECT 0.9 '+ {fixes_requested: ["x"], needs_human: true, question_for_human: "Is cursor encoding fixed by the spec?"}')
+  run review_run T5 "$PROJ"
+  [ "$output" = "ESCALATE" ]
+  [[ "$(decision '.reasons[0]' T5)" == *"Is cursor encoding fixed by the spec?"* ]]
 }
 
 @test "hard rule: a high concern escalates" {

@@ -36,7 +36,7 @@ the real CLI (structured output lands in `.structured_output` of the
 4. **Confirmer only on ACCEPT.** An ESCALATE is already a stop; a wrong REJECT
    costs one agent round and is bounded by `max_reject_rounds`.
 
-5. **Hard rules on the post-confirm verdict**, each forcing ESCALATE:
+5. *(Superseded by ADR-0009.)* **Hard rules on the post-confirm verdict**, each forcing ESCALATE:
    confidence below `escalation.confidence_threshold`; any high/critical
    concern; `needs_human`; a changed file outside `scope` (done_when test files
    are always in scope); and, for ACCEPT only, a task area in
@@ -55,7 +55,4 @@ the real CLI (structured output lands in `.structured_output` of the
   (`ORCHESTRA_ONLINE=1`) exercises the real CLI. First real run: a buggy
   pagination change got REJECT with two high concerns, escalated by the
   severity rule, cost $0.14.
-- Open question: the severity rule also escalates a REJECT. A REJECT is not
-  merged and goes back to the agent anyway, so escalating it may pull a human
-  in for bugs the agent could fix. Revisit once real runs show how often this
-  happens.
+- §5 is superseded by ADR-0009: the risk rules now guard ACCEPT only.

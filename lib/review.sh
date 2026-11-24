@@ -225,12 +225,20 @@ _rv_ask() {
 }
 
 # _rv_rules <task-id> <verdict-file> <changed-files-file> — print one line per
-# hard escalation rule that fires.
+# hard escalation rule that fires (ADR-0009). The risk rules guard ACCEPT only:
+# a REJECT is never merged and goes back to the agent, bounded by
+# max_reject_rounds. needs_human applies to any verdict, because the agent
+# cannot answer the reviewer's question.
 _rv_rules() {
   _rt=$1
   _rvf=$2
   _rv=$(jq -r '.verdict' "$_rvf")
   [ "$_rv" != ESCALATE ] || return 0
+  if [ "$(jq -r '.needs_human // false' "$_rvf")" = true ]; then
+    printf 'reviewer asked for a human: %s\n' "$(jq -r '.question_for_human // ""' "$_rvf")"
+  fi
+  [ "$_rv" = ACCEPT ] || return 0
+
   _thr=$(config_get '.escalation.confidence_threshold // 0.75')
   _conf=$(jq -r '.confidence' "$_rvf")
   if awk -v c="$_conf" -v t="$_thr" 'BEGIN { exit !(c < t) }'; then
@@ -238,17 +246,12 @@ _rv_rules() {
   fi
   _hi=$(jq -r '[.concerns[]? | select(.severity == "high" or .severity == "critical")] | length' "$_rvf")
   [ "$_hi" = 0 ] || printf 'reviewer raised %s high/critical concern(s)\n' "$_hi"
-  if [ "$(jq -r '.needs_human // false' "$_rvf")" = true ]; then
-    printf 'reviewer asked for a human: %s\n' "$(jq -r '.question_for_human // ""' "$_rvf")"
-  fi
-  if [ "$_rv" = ACCEPT ]; then
-    _human=$(config_get '.escalation.always_human[]?')
-    for _a in $(plan_task "$_rt" '.areas[]?'); do
-      if printf '%s\n' "$_human" | grep -qxF -- "$_a"; then
-        printf 'task area "%s" is always_human\n' "$_a"
-      fi
-    done
-  fi
+  _human=$(config_get '.escalation.always_human[]?')
+  for _a in $(plan_task "$_rt" '.areas[]?'); do
+    if printf '%s\n' "$_human" | grep -qxF -- "$_a"; then
+      printf 'task area "%s" is always_human\n' "$_a"
+    fi
+  done
   _scope=$(plan_task "$_rt" '.scope[]?')
   if [ -n "$_scope" ]; then
     _allowed=$(printf '%s\n%s\n' "$_scope" "$(plan_task "$_rt" '.done_when.tests_pass[]?')")
