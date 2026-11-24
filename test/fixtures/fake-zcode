@@ -1,0 +1,21 @@
+#!/bin/sh
+# fake-zcode — stands in for the zcode CLI in tests. Logs its arguments to
+# $FAKE_ZCODE_LOG; `version` prints a version; `-p <prompt> --cwd <dir>`
+# writes ZCODE_RAN.txt containing the prompt into <dir>.
+printf '%s\n' "$@" >"${FAKE_ZCODE_LOG:-/dev/null}"
+if [ "${1:-}" = version ]; then
+  echo "zcode 0.17.1"
+  exit 0
+fi
+prompt=""
+cwd=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    -p) prompt=$2; shift 2 ;;
+    --cwd) cwd=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ -n "$cwd" ] || exit 2
+printf '%s\n' "$prompt" >"$cwd/ZCODE_RAN.txt"
+echo '{"ok":true}'
