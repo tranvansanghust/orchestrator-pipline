@@ -1,7 +1,75 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://orchestra.local/schemas/verdict.schema.json",
-  "title": "verdict",
-  "description": "Schema for reviewer verdict. TODO: define fields.",
-  "type": "object"
+  "title": "verdict.json",
+  "description": "Reviewer (claude -p) output for one task, produced only after VERIFY is green. The reviewer judges the diff against spec + contracts; it trusts machine verify results, not the agent's own claims. Each piece of evidence is tagged with its source so the second layer (confirmation.schema.json) can check whether an ACCEPT rests on trusted evidence. 'Not sure' leans to ESCALATE, never ACCEPT.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task", "verdict", "confidence", "summary", "evidence"],
+  "properties": {
+    "task": { "type": "string", "pattern": "^T[0-9]+$" },
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Review round: 1 for the first review, 2+ after a REJECT and v2."
+    },
+    "verdict": {
+      "enum": ["ACCEPT", "REJECT", "ESCALATE"],
+      "description": "Three-way, never binary."
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "concerns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "detail"],
+        "properties": {
+          "severity": { "enum": ["info", "low", "medium", "high", "critical"] },
+          "area": { "type": "string", "minLength": 1 },
+          "detail": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "description": "What the verdict rests on. The confirmer weighs these by source.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "source"],
+        "properties": {
+          "claim": { "type": "string", "minLength": 1 },
+          "source": {
+            "enum": ["verify_report", "diff", "contract", "spec", "review_brief", "agent_claim", "reviewer_inference"],
+            "description": "verify_report = trusted machine output; diff/contract/spec/review_brief = phase-1 or code artifacts; agent_claim = the agent's own narrative (untrusted, weakest); reviewer_inference = the reviewer's reasoning."
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Pointer into the source: file:line, a test name, a contract operationId, etc."
+          }
+        }
+      }
+    },
+    "needs_human": { "type": "boolean" },
+    "question_for_human": { "type": "string", "minLength": 1 },
+    "fixes_requested": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Concrete changes for the v2 agent. Required when verdict is REJECT."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "REJECT" } } },
+      "then": { "required": ["fixes_requested"], "properties": { "fixes_requested": { "minItems": 1 } } }
+    },
+    {
+      "if": { "properties": { "needs_human": { "const": true } } },
+      "then": { "required": ["question_for_human"] }
+    }
+  ]
 }

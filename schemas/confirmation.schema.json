@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orchestra.local/schemas/confirmation.schema.json",
+  "title": "confirmation.json",
+  "description": "Second-layer check of a reviewer verdict against its own evidence, run before the verdict takes effect. The confirmer re-reads the evidence and the evidence bars; it does not re-run the work. The engine takes the reviewer's verdict only when upheld, otherwise the weaker of the two — a downgrade never raises trust (ACCEPT may fall to REJECT or ESCALATE, never the reverse).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task", "upheld", "supported", "reason"],
+  "properties": {
+    "task": { "type": "string", "pattern": "^T[0-9]+$" },
+    "upheld": {
+      "type": "boolean",
+      "description": "true when the evidence meets the bar for the reviewer's verdict."
+    },
+    "supported": {
+      "enum": ["ACCEPT", "REJECT", "ESCALATE"],
+      "description": "The verdict the evidence actually supports. When upheld is false, an ACCEPT that rests only on agent_claim/reviewer_inference drops to ESCALATE."
+    },
+    "reason": { "type": "string", "minLength": 1 }
+  }
+}

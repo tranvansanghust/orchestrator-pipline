@@ -14,6 +14,8 @@ schemas:
 	check-jsonschema --schemafile schemas/config.schema.json templates/orchestra.config.json $(EXAMPLE)/orchestra.config.json
 	check-jsonschema --schemafile schemas/plan.schema.json templates/plan.json $(EXAMPLE)/plan.json
 	check-jsonschema --schemafile schemas/traceability.schema.json templates/traceability.json $(EXAMPLE)/traceability.json
+	check-jsonschema --schemafile schemas/verdict.schema.json $(EXAMPLE)/samples/verdict-*.json
+	check-jsonschema --schemafile schemas/confirmation.schema.json $(EXAMPLE)/samples/confirmation-*.json
 
 test:
 	bats test/

@@ -1,0 +1,19 @@
+{
+  "task": "T5",
+  "round": 1,
+  "verdict": "REJECT",
+  "confidence": 0.9,
+  "summary": "Pagination orders by created_at only, so posts sharing a timestamp are skipped or repeated across pages.",
+  "concerns": [
+    { "severity": "medium", "area": "pagination", "detail": "Cursor must encode (created_at, id); the tie-break test fails." }
+  ],
+  "evidence": [
+    { "claim": "Tie-break case fails", "source": "verify_report", "ref": "test/posts.list.test.ts" },
+    { "claim": "ORDER BY created_at DESC has no id tie-break", "source": "diff", "ref": "src/routes/posts.ts:31" }
+  ],
+  "fixes_requested": [
+    "Order by (created_at DESC, id DESC) and encode both in next_cursor.",
+    "Decode and apply both halves of the cursor in the WHERE clause."
+  ],
+  "needs_human": false
+}

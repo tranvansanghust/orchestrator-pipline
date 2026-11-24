@@ -1,0 +1,6 @@
+{
+  "task": "T5",
+  "upheld": true,
+  "supported": "REJECT",
+  "reason": "The REJECT rests on a failing verify_report and the exact line in the diff; the evidence meets the bar."
+}

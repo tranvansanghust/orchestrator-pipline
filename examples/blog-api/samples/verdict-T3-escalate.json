@@ -1,0 +1,17 @@
+{
+  "task": "T3",
+  "round": 2,
+  "verdict": "ESCALATE",
+  "confidence": 0.55,
+  "summary": "Tests are green, but the middleware's algorithm handling is hard to follow and this is an always_human auth area.",
+  "concerns": [
+    { "severity": "high", "area": "auth", "detail": "Cannot confirm from the diff that alg:none is rejected in every code path; the test may not exercise the production verifier config." }
+  ],
+  "evidence": [
+    { "claim": "login test file passes", "source": "verify_report", "ref": "test/auth.login.test.ts" },
+    { "claim": "Author states alg:none is rejected", "source": "agent_claim" },
+    { "claim": "Verifier is constructed in two places and may differ", "source": "reviewer_inference" }
+  ],
+  "needs_human": true,
+  "question_for_human": "Is the JWT verifier guaranteed to pin HS256 in the request path, not only in the test setup?"
+}

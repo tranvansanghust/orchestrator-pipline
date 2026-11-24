@@ -62,3 +62,42 @@ invalid() {
 @test "traceability: unknown status is rejected" {
   invalid traceability '.["FR-1"].status = "done"' "$EX/traceability.json"
 }
+
+@test "sample verdicts and confirmations are valid" {
+  for f in "$EX"/samples/verdict-*.json; do valid verdict "$f"; done
+  for f in "$EX"/samples/confirmation-*.json; do valid confirmation "$f"; done
+}
+
+@test "verdict: unknown evidence source is rejected" {
+  invalid verdict '.evidence[0].source = "gut_feeling"' "$EX/samples/verdict-T3-accept.json"
+}
+
+@test "verdict: evidence must not be empty" {
+  invalid verdict '.evidence = []' "$EX/samples/verdict-T3-accept.json"
+}
+
+@test "verdict: REJECT without fixes_requested is rejected" {
+  invalid verdict 'del(.fixes_requested)' "$EX/samples/verdict-T5-reject.json"
+}
+
+@test "verdict: needs_human without a question is rejected" {
+  invalid verdict '.question_for_human = null | del(.question_for_human)' "$EX/samples/verdict-T3-escalate.json"
+}
+
+@test "verdict: unknown verdict value is rejected" {
+  invalid verdict '.verdict = "MAYBE"' "$EX/samples/verdict-T3-accept.json"
+}
+
+@test "confirmation: unknown supported value is rejected" {
+  invalid confirmation '.supported = "MERGE"' "$EX/samples/confirmation-T5-upheld.json"
+}
+
+@test "config: brain.confirmer may pin a model" {
+  jq '.brain.confirmer = {"cmd": "claude -p", "model": "claude-haiku-4-5-20251001"}' \
+    "$EX/orchestra.config.json" > "$BATS_TEST_TMPDIR/c.json"
+  valid config "$BATS_TEST_TMPDIR/c.json"
+}
+
+@test "config: brain role object without cmd is rejected" {
+  invalid config '.brain.reviewer = {"model": "x"}' "$EX/orchestra.config.json"
+}

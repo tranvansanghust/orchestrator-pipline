@@ -1,0 +1,17 @@
+{
+  "task": "T3",
+  "round": 1,
+  "verdict": "ACCEPT",
+  "confidence": 0.88,
+  "summary": "Login issues a 1h HS256 JWT; middleware rejects expired, wrongly-signed and alg:none tokens; failure responses are identical for unknown email and wrong password.",
+  "concerns": [
+    { "severity": "info", "area": "auth", "detail": "Unknown-email path compares against a dummy hash to equalise timing; acceptable." }
+  ],
+  "evidence": [
+    { "claim": "All six login/middleware cases pass", "source": "verify_report", "ref": "test/auth.login.test.ts" },
+    { "claim": "Token signed with HS256, exp = iat + 3600", "source": "diff", "ref": "src/services/auth.ts:42" },
+    { "claim": "author_id is never taken from the request body", "source": "contract", "ref": "createPost" },
+    { "claim": "Matches ADR-0002 (stateless JWT, 1h)", "source": "review_brief" }
+  ],
+  "needs_human": false
+}

@@ -41,9 +41,14 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["reviewer", "planner"],
+      "description": "Claude roles. Each role is a command string, or {cmd, model} to pin a model for that role (a strong model for the reviewer, a cheaper one for the confirmer's check).",
       "properties": {
-        "reviewer": { "type": "string", "minLength": 1 },
-        "planner": { "type": "string", "minLength": 1 }
+        "planner": { "$ref": "#/$defs/brainRole" },
+        "reviewer": { "$ref": "#/$defs/brainRole" },
+        "confirmer": {
+          "$ref": "#/$defs/brainRole",
+          "description": "Second layer that checks the reviewer's verdict against its evidence. Defaults to the reviewer when omitted."
+        }
       }
     },
     "agents": {
@@ -98,6 +103,22 @@
           "description": "Actions that always stop and wait for a human."
         }
       }
+    }
+  },
+  "$defs": {
+    "brainRole": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cmd"],
+          "properties": {
+            "cmd": { "type": "string", "minLength": 1 },
+            "model": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
     }
   }
 }
