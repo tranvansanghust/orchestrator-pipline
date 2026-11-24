@@ -37,7 +37,8 @@ bin/orchestra     entrypoint: init | design | go | status | resolve | stop
 lib/              các module (state machine, scheduler, pool, runner, review, escalation…)
 adapters/         mỗi CLI một file, cùng một interface 4 hàm (xem adapters/README.md)
 commands/         slash-command cho pha 1, `init` sẽ copy vào .claude/commands/
-templates/        khung docs/ 10 tầng, config mẫu, rubric/conventions mặc định
+templates/        khung trống: docs/ 10 tầng + specs, config, plan, traceability; `init` copy sang project
+examples/         blog-api: bộ hồ sơ pha 1 điền đủ, dùng làm mẫu và fixture cho test
 profiles/         lite | standard | strict: những readiness check bắt buộc
 schemas/          JSON Schema cho config, plan, traceability, task, verdict, escalation
 test/             bats
@@ -49,7 +50,7 @@ Engine không chứa thông tin riêng của project nào. Mọi khác biệt gi
 
 ```sh
 make lint      # shellcheck -s sh
-make schemas   # check-jsonschema --check-metaschema
+make schemas   # schema hợp lệ + templates/examples khớp schema
 make test      # bats test/
 make check     # chạy cả ba
 ```
@@ -57,7 +58,7 @@ make check     # chạy cả ba
 ## Lộ trình
 
 - [x] 0. Skeleton repo
-- [ ] 1. Artifact nền: schemas, templates docs/, traceability, readiness check
+- [ ] 1. Artifact nền: ~~schemas, templates docs/, traceability~~ (xong), readiness check
 - [ ] 2. Runner VERIFY (`done_when`)
 - [ ] 3. Review + context pack (`claude -p` → verdict)
 - [ ] 4. Daemon end-to-end với 1 agent

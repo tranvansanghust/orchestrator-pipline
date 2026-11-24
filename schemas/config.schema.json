@@ -1,7 +1,103 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://orchestra.local/schemas/config.schema.json",
-  "title": "config",
-  "description": "Schema for orchestra.config.json. TODO: define fields.",
-  "type": "object"
+  "title": "orchestra.config.json",
+  "description": "Per-project configuration. Every difference between projects goes through this file or an adapter.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["orchestra_version", "project", "profile", "stack", "brain", "agents"],
+  "properties": {
+    "orchestra_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Engine version this project is pinned to. A major mismatch with VERSION warns."
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "profile": {
+      "enum": ["lite", "standard", "strict"],
+      "description": "Default readiness profile; `orchestra go --profile` overrides it."
+    },
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "test", "test_one"],
+      "properties": {
+        "language": { "type": "string", "minLength": 1 },
+        "test": { "type": "string", "minLength": 1, "description": "Run the whole suite." },
+        "test_one": {
+          "type": "string",
+          "pattern": "\\{files\\}",
+          "description": "Run specific test files; {files} is replaced by a space-separated list."
+        },
+        "typecheck": { "type": "string", "minLength": 1 },
+        "build": { "type": "string", "minLength": 1 },
+        "integration": { "type": "string", "minLength": 1, "description": "Milestone integration build / e2e." }
+      }
+    },
+    "brain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer", "planner"],
+      "properties": {
+        "reviewer": { "type": "string", "minLength": 1 },
+        "planner": { "type": "string", "minLength": 1 }
+      }
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "adapter", "skills"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+          "adapter": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "description": "Basename of adapters/<adapter>.sh."
+          },
+          "model": { "type": "string", "minLength": 1 },
+          "skills": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "escalation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "confidence_threshold": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.75 },
+        "always_human": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Areas that always escalate, matched against tasks[].areas."
+        },
+        "max_verify_rounds": { "type": "integer", "minimum": 1, "default": 3 },
+        "max_reject_rounds": { "type": "integer", "minimum": 1, "default": 3 }
+      }
+    },
+    "vcs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strategy": { "enum": ["worktree"], "default": "worktree" },
+        "gate": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["push", "deploy", "delete", "migration"] },
+          "default": ["push", "deploy", "delete", "migration"],
+          "description": "Actions that always stop and wait for a human."
+        }
+      }
+    }
+  }
 }

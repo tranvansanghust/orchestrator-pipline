@@ -1,5 +1,31 @@
 {
   "orchestra_version": "0.1.0",
-  "project": "",
-  "profile": "standard"
+  "project": "my-project",
+  "profile": "standard",
+  "stack": {
+    "language": "typescript",
+    "test": "npm test",
+    "test_one": "npx vitest run {files}",
+    "typecheck": "npx tsc --noEmit",
+    "build": "npm run build",
+    "integration": "npm run test:e2e"
+  },
+  "brain": {
+    "reviewer": "claude -p --output-format json",
+    "planner": "claude"
+  },
+  "agents": [
+    { "name": "glm", "adapter": "opencode", "model": "zai/glm-4.6", "skills": ["backend", "api"] },
+    { "name": "deepseek", "adapter": "opencode", "model": "deepseek/deepseek-chat", "skills": ["algo", "refactor"] }
+  ],
+  "escalation": {
+    "confidence_threshold": 0.75,
+    "always_human": ["auth", "payment", "migration"],
+    "max_verify_rounds": 3,
+    "max_reject_rounds": 3
+  },
+  "vcs": {
+    "strategy": "worktree",
+    "gate": ["push", "deploy", "delete", "migration"]
+  }
 }

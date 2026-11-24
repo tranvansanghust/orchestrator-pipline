@@ -1,0 +1,16 @@
+{
+  "orchestra_version": "0.1.0",
+  "goal": "TODO: one-line goal",
+  "approved": false,
+  "tasks": [
+    {
+      "id": "T1",
+      "desc": "TODO: first task",
+      "deps": [],
+      "skill": "backend",
+      "spec_file": "docs/specs/T1.md",
+      "areas": [],
+      "done_when": { "tests_pass": ["test/TODO.test.ts"], "typecheck": true }
+    }
+  ]
+}

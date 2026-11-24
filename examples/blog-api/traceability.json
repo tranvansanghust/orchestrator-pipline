@@ -1,0 +1,30 @@
+{
+  "FR-1": {
+    "desc": "Register with email and password",
+    "tasks": ["T1", "T2"],
+    "tests": ["test/user.model.test.ts", "test/auth.register.test.ts"],
+    "acceptance": "POST /auth/register valid → 201 + user (no password); duplicate email → 409; invalid email or password < 12 chars → 422",
+    "status": "planned"
+  },
+  "FR-2": {
+    "desc": "Log in and receive a JWT",
+    "tasks": ["T3"],
+    "tests": ["test/auth.login.test.ts"],
+    "acceptance": "POST /auth/login correct → 200 + JWT valid 1h; wrong password or unknown email → 401 with the same body",
+    "status": "planned"
+  },
+  "FR-3": {
+    "desc": "Authenticated user creates a post",
+    "tasks": ["T4"],
+    "tests": ["test/posts.create.test.ts"],
+    "acceptance": "POST /posts with valid token → 201 + post; no/expired token → 401; title empty or > 200 chars → 422",
+    "status": "planned"
+  },
+  "FR-4": {
+    "desc": "Anyone lists posts, newest first, paginated",
+    "tasks": ["T5"],
+    "tests": ["test/posts.list.test.ts"],
+    "acceptance": "GET /posts → 200, newest first, default 20, limit ≤ 50 (larger → 422), next_cursor pages without gaps or duplicates",
+    "status": "planned"
+  }
+}

@@ -1,7 +1,11 @@
-# Real OpenAPI document (machine-readable) — the cross-task contract.
-# TODO: filled example.
+# Real OpenAPI 3.1 document — the contract between tasks.
+# Agents implement against it, the reviewer checks diffs against it, and
+# MERGE must update it when a contract changes. Keep it consistent with
+# 05-data-model.md (same field names and types).
 openapi: 3.1.0
 info:
   title: TODO
   version: 0.1.0
 paths: {}
+components:
+  schemas: {}

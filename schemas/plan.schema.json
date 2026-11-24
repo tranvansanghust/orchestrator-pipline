@@ -1,7 +1,98 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://orchestra.local/schemas/plan.schema.json",
-  "title": "plan",
-  "description": "Schema for plan.json. TODO: define fields.",
-  "type": "object"
+  "title": "plan.json",
+  "description": "Phase-1 to phase-2 handoff: the executable task DAG. Requirement mapping lives in traceability.json; build/test commands live in orchestra.config.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["orchestra_version", "goal", "approved", "tasks"],
+  "properties": {
+    "orchestra_version": { "$ref": "#/$defs/semver" },
+    "goal": { "type": "string", "minLength": 1 },
+    "approved": {
+      "type": "boolean",
+      "description": "Written false by /plan. Only `orchestra go` sets it true, after the readiness check passes and docs/ is frozen."
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "taskId": {
+      "type": "string",
+      "pattern": "^T[0-9]+$"
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "desc", "deps", "skill", "spec_file", "done_when"],
+      "properties": {
+        "id": { "$ref": "#/$defs/taskId" },
+        "desc": { "type": "string", "minLength": 1 },
+        "deps": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/taskId" },
+          "description": "Tasks that must be DONE first. Unknown ids and cycles are caught by the readiness check."
+        },
+        "skill": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Matched against agents[].skills in orchestra.config.json."
+        },
+        "spec_file": {
+          "type": "string",
+          "pattern": "^docs/specs/T[0-9]+\\.md$",
+          "description": "Committed task spec handed to the agent."
+        },
+        "areas": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Sensitive areas the task touches, matched against escalation.always_human."
+        },
+        "scope": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Glob paths the task is expected to change. A diff outside them escalates."
+        },
+        "done_when": { "$ref": "#/$defs/doneWhen" }
+      }
+    },
+    "doneWhen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tests_pass"],
+      "description": "Evaluated by the runner, never by the agent.",
+      "properties": {
+        "tests_pass": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Test files that must pass, run through stack.test_one."
+        },
+        "typecheck": {
+          "type": "boolean",
+          "description": "Run stack.typecheck."
+        },
+        "build": {
+          "type": "boolean",
+          "description": "Run stack.build."
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Extra shell commands run in the task worktree; each must exit 0."
+        }
+      }
+    }
+  }
 }

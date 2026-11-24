@@ -1,5 +1,27 @@
 # Data Model
 
-> ERD, schema and migration plan; must match 04-api-spec.yaml.
+<!--
+Entities, schema and migration plan. Field names and types must match
+components.schemas in 04-api-spec.yaml.
+-->
 
-TODO: section template + filled example.
+## Entities
+
+```mermaid
+erDiagram
+  ENTITY {
+    uuid id PK
+  }
+```
+
+## Tables
+
+### <table>
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| | | | |
+
+## Migration plan
+
+<!-- Ordered migrations, and how each is rolled back. Migrations are a gated area. -->

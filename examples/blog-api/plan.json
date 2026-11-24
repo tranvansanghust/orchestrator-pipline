@@ -1,0 +1,57 @@
+{
+  "orchestra_version": "0.1.0",
+  "goal": "Blog API: register, log in, create and list posts",
+  "approved": false,
+  "tasks": [
+    {
+      "id": "T1",
+      "desc": "User model + users migration",
+      "deps": [],
+      "skill": "backend",
+      "spec_file": "docs/specs/T1.md",
+      "areas": ["migration"],
+      "scope": ["src/db/**", "src/models/user.ts", "migrations/**"],
+      "done_when": { "tests_pass": ["test/user.model.test.ts"], "typecheck": true }
+    },
+    {
+      "id": "T2",
+      "desc": "POST /auth/register",
+      "deps": ["T1"],
+      "skill": "backend",
+      "spec_file": "docs/specs/T2.md",
+      "areas": ["auth"],
+      "scope": ["src/routes/auth.ts", "src/services/auth.ts"],
+      "done_when": { "tests_pass": ["test/auth.register.test.ts"], "typecheck": true }
+    },
+    {
+      "id": "T3",
+      "desc": "POST /auth/login returning a JWT, plus auth middleware",
+      "deps": ["T1"],
+      "skill": "backend",
+      "spec_file": "docs/specs/T3.md",
+      "areas": ["auth"],
+      "scope": ["src/routes/auth.ts", "src/services/auth.ts", "src/middleware/auth.ts"],
+      "done_when": { "tests_pass": ["test/auth.login.test.ts"], "typecheck": true }
+    },
+    {
+      "id": "T4",
+      "desc": "Post model + posts migration + POST /posts",
+      "deps": ["T3"],
+      "skill": "api",
+      "spec_file": "docs/specs/T4.md",
+      "areas": ["migration"],
+      "scope": ["src/models/post.ts", "src/routes/posts.ts", "migrations/**"],
+      "done_when": { "tests_pass": ["test/posts.create.test.ts"], "typecheck": true }
+    },
+    {
+      "id": "T5",
+      "desc": "GET /posts with cursor pagination",
+      "deps": ["T4"],
+      "skill": "api",
+      "spec_file": "docs/specs/T5.md",
+      "areas": [],
+      "scope": ["src/routes/posts.ts"],
+      "done_when": { "tests_pass": ["test/posts.list.test.ts"], "typecheck": true, "build": true }
+    }
+  ]
+}
