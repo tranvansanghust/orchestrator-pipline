@@ -142,7 +142,7 @@ review_build_pack() {
       printf 'Dropped to fit the size budget: %s\n\n' "$(tr '\n' ' ' <"$_dir/dropped.txt")"
     fi
     for _s in spec verify diff tests previous contracts brief architecture conventions; do
-      [ -f "$_sec/$_s.md" ] && cat "$_sec/$_s.md"
+      if [ -f "$_sec/$_s.md" ]; then cat "$_sec/$_s.md"; fi
     done
   } >"$_dir/pack.md"
 

@@ -20,7 +20,8 @@
           "name": { "enum": ["tests", "typecheck", "build", "command"] },
           "cmd": { "type": "string", "minLength": 1 },
           "exit": { "type": "integer" },
-          "passed": { "type": "boolean" }
+          "passed": { "type": "boolean" },
+          "log": { "type": "string", "description": "Combined output of the check." }
         }
       }
     }

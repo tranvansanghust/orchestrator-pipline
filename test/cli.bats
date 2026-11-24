@@ -32,9 +32,9 @@ setup() {
 }
 
 @test "unimplemented commands exit 3" {
-  # init and go are implemented (test/init.bats, test/go.bats); never run init
-  # here, it would scaffold into the orchestra repo itself.
-  for c in design status resolve stop; do
+  # init, go, status and stop are implemented (their own test files); never run
+  # init or stop here, they would write into the orchestra repo itself.
+  for c in design resolve; do
     run "$ORCHESTRA" "$c"
     [ "$status" -eq 3 ]
   done

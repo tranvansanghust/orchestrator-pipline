@@ -31,6 +31,7 @@ cfg() { jq -r "$1" orchestra.config.json; }
   [ "$(cfg '.stack.test_one')" = "npx vitest run {files}" ]
   [ "$(cfg '.stack.typecheck')" = "npx tsc --noEmit" ]
   [ "$(cfg '.stack.build')" = "npm run build" ]
+  [ "$(cfg '.stack.setup')" = "npm install" ]
   check-jsonschema --schemafile "$ROOT/schemas/config.schema.json" orchestra.config.json
 }
 
@@ -51,6 +52,7 @@ cfg() { jq -r "$1" orchestra.config.json; }
   touch go.mod
   "$ORCHESTRA" init >/dev/null
   [ "$(cfg '.stack.language')" = "go" ]
+  [ "$(cfg '.stack.setup')" = "go mod download" ]
   rm go.mod orchestra.config.json
   touch pyproject.toml
   "$ORCHESTRA" init >/dev/null

@@ -1,7 +1,25 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://orchestra.local/schemas/task.schema.json",
-  "title": "task",
-  "description": "Schema for .bus/tasks/<id>.json. TODO: define fields.",
-  "type": "object"
+  "title": "task state",
+  "description": "Runtime state of one task, in .bus/tasks/<id>.json. A task with no file is DRAFT. Transitions are guarded by lib/statemachine.sh and logged to .bus/log.jsonl.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "state", "attempt", "verify_rounds", "reject_rounds"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^T[0-9]+$" },
+    "state": {
+      "enum": ["DRAFT", "DISPATCHED", "IN_PROGRESS", "SUBMITTED", "VERIFY", "REVIEW", "MERGED", "DONE", "BLOCKED", "ESCALATED"]
+    },
+    "attempt": { "type": "integer", "minimum": 0, "description": "Agent runs so far; prompt-<n>.md is attempt n." },
+    "verify_rounds": { "type": "integer", "minimum": 0, "description": "Failed VERIFY runs." },
+    "reject_rounds": { "type": "integer", "minimum": 0, "description": "REJECT verdicts." },
+    "agent": { "type": "string", "minLength": 1 },
+    "agent_rc": { "type": "integer", "description": "Exit status of the last agent run (124 = timed out)." },
+    "base": { "type": "string", "minLength": 1, "description": "Commit the task branch started from." },
+    "branch": { "type": "string", "minLength": 1 },
+    "worktree": { "type": "string", "minLength": 1 },
+    "reason": { "type": "string", "description": "Why the last transition happened." },
+    "updated_at": { "type": "string", "minLength": 1 }
+  }
 }

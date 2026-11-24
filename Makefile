@@ -5,8 +5,10 @@ EXAMPLE = examples/blog-api
 
 check: lint schemas test
 
+# SC2016 is excluded: single-quoted `$x` here is always a jq variable or a
+# markdown backtick, never a missed shell expansion.
 lint:
-	shellcheck -s sh $(SH_FILES)
+	shellcheck -s sh -e SC2016 $(SH_FILES)
 
 # Schemas are valid, and the shipped templates + example conform to them.
 schemas:

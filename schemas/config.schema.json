@@ -34,7 +34,8 @@
         },
         "typecheck": { "type": "string", "minLength": 1 },
         "build": { "type": "string", "minLength": 1 },
-        "integration": { "type": "string", "minLength": 1, "description": "Milestone integration build / e2e." }
+        "integration": { "type": "string", "minLength": 1, "description": "Milestone integration build / e2e." },
+        "setup": { "type": "string", "minLength": 1, "description": "Run once in each new task worktree before the agent starts (e.g. npm ci)." }
       }
     },
     "brain": {
@@ -72,6 +73,18 @@
             "uniqueItems": true,
             "items": { "type": "string", "minLength": 1 }
           }
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent_timeout_s": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1800,
+          "description": "An agent run longer than this is stopped; the attempt then goes through VERIFY as usual."
         }
       }
     },

@@ -9,6 +9,7 @@ ORCHESTRA_EXIT_OK=0
 ORCHESTRA_EXIT_ERROR=1
 ORCHESTRA_EXIT_USAGE=2
 ORCHESTRA_EXIT_NOT_IMPLEMENTED=3
+ORCHESTRA_EXIT_NEEDS_HUMAN=4
 
 log_info() { printf 'orchestra: %s\n' "$*" >&2; }
 log_warn() { printf 'orchestra: warning: %s\n' "$*" >&2; }
@@ -41,7 +42,13 @@ orchestra_load() {
 }
 
 # project_root — top of the current git repo, or the working directory.
+# bin/orchestra computes it once into ORCHESTRA_PROJECT_ROOT; the engine calls
+# this hundreds of times per run.
 project_root() {
+  if [ -n "${ORCHESTRA_PROJECT_ROOT:-}" ]; then
+    printf '%s\n' "$ORCHESTRA_PROJECT_ROOT"
+    return 0
+  fi
   git rev-parse --show-toplevel 2>/dev/null || pwd
 }
 

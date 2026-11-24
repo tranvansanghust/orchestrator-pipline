@@ -21,12 +21,13 @@ _init_copy() {
   _created=$((_created + 1))
 }
 
-# _init_stack_json <language> <test> <test_one> [typecheck] [build]
+# _init_stack_json <language> <test> <test_one> [typecheck] [build] [setup]
 _init_stack_json() {
-  jq -nc --arg l "$1" --arg t "$2" --arg o "$3" --arg tc "${4:-}" --arg b "${5:-}" '
+  jq -nc --arg l "$1" --arg t "$2" --arg o "$3" --arg tc "${4:-}" --arg b "${5:-}" --arg s "${6:-}" '
     {language: $l, test: $t, test_one: $o}
     + (if $tc != "" then {typecheck: $tc} else {} end)
-    + (if $b != "" then {build: $b} else {} end)'
+    + (if $b != "" then {build: $b} else {} end)
+    + (if $s != "" then {setup: $s} else {} end)'
 }
 
 # init_detect_stack [root] — print the config `stack` object for the project.
@@ -51,13 +52,17 @@ init_detect_stack() {
     if jq -e '.scripts.build' "$_r/package.json" >/dev/null 2>&1; then
       _build="npm run build"
     fi
-    _init_stack_json "$_lang" "npm test" "$_one" "$_tc" "$_build"
+    _setup="npm install"
+    if [ -f "$_r/package-lock.json" ]; then _setup="npm ci"; fi
+    _init_stack_json "$_lang" "npm test" "$_one" "$_tc" "$_build" "$_setup"
   elif [ -f "$_r/pyproject.toml" ] || [ -f "$_r/setup.py" ] || [ -f "$_r/requirements.txt" ]; then
-    _init_stack_json python "pytest" "pytest {files}"
+    _setup=""
+    if [ -f "$_r/requirements.txt" ]; then _setup="pip install -r requirements.txt"; fi
+    _init_stack_json python "pytest" "pytest {files}" "" "" "$_setup"
   elif [ -f "$_r/go.mod" ]; then
-    _init_stack_json go "go test ./..." "go test {files}" "go vet ./..." "go build ./..."
+    _init_stack_json go "go test ./..." "go test {files}" "go vet ./..." "go build ./..." "go mod download"
   elif [ -f "$_r/Cargo.toml" ]; then
-    _init_stack_json rust "cargo test" "cargo test {files}" "cargo check" "cargo build"
+    _init_stack_json rust "cargo test" "cargo test {files}" "cargo check" "cargo build" "cargo fetch"
   else
     _init_stack_json unknown "TODO: test command" "TODO: run these test files: {files}"
   fi

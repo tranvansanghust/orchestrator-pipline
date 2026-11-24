@@ -22,6 +22,11 @@ export ORCHESTRA_HOME
 
 . "$ORCHESTRA_HOME/lib/common.sh"
 
+# Resolve the project once per invocation (never inherited from the caller).
+unset ORCHESTRA_PROJECT_ROOT
+ORCHESTRA_PROJECT_ROOT=$(project_root)
+export ORCHESTRA_PROJECT_ROOT
+
 usage() {
   cat <<'EOF'
 Usage: orchestra <command> [args]
@@ -29,7 +34,9 @@ Usage: orchestra <command> [args]
 Commands:
   init [--force]     Scaffold orchestra into the current project
   design             Open the phase-1 cockpit (Claude TUI in tmux)
-  go [--profile P]   Run the readiness check, freeze docs/, start phase 2
+  go [--profile P] [--refreeze] [--no-run]
+                     Readiness check, freeze docs/, run phase 2 (resumes a
+                     stopped run; --no-run only approves and freezes)
   status             Show task states and open escalations
   resolve <task> <accept|reject|amend-spec> [message]
                      Resolve an escalated task
@@ -45,10 +52,14 @@ cmd=${1:-help}
 case $cmd in
   init)    orchestra_load init;             init_project "$@" ;;
   design)  orchestra_load tmux;             tmux_open_cockpit "$@" ;;
-  go)      orchestra_load config readiness daemon; go_main "$@" ;;
-  status)  orchestra_load bus statemachine; status_main "$@" ;;
-  resolve) orchestra_load escalation;       escalation_resolve "$@" ;;
-  stop)    orchestra_load daemon;           daemon_stop "$@" ;;
+  go)
+    orchestra_load config bus statemachine scheduler adapter pool worktree \
+      runner review escalation readiness daemon
+    go_main "$@"
+    ;;
+  status)  orchestra_load config bus statemachine; status_main "$@" ;;
+  resolve) orchestra_load escalation;              escalation_resolve "$@" ;;
+  stop)    orchestra_load daemon;                  daemon_stop "$@" ;;
   version|--version|-v) cat "$ORCHESTRA_HOME/VERSION" ;;
   help|--help|-h) usage ;;
   *)

@@ -1,11 +1,14 @@
 #!/bin/sh
 # fake-claude — stands in for `claude -p` in tests. Never calls the network.
 # Reads the prompt on stdin, logs args + prompt, and prints a claude-style JSON
-# envelope whose structured_output comes from the environment:
-#   FAKE_REVIEWER_JSON    object returned to reviewer calls
-#   FAKE_CONFIRMER_JSON   object returned to confirmer calls
-#   FAKE_INVALID          how many initial calls per role return no JSON
-#   FAKE_LOG              directory for <role>-<n>.prompt / .args
+# envelope whose structured_output comes from the environment. The task id and
+# review round are read from the prompt's first line; the most specific
+# variable wins:
+#   FAKE_REVIEWER_JSON_<task>_R<round>, FAKE_REVIEWER_JSON_<task>, FAKE_REVIEWER_JSON
+#   FAKE_CONFIRMER_JSON_<task>, FAKE_CONFIRMER_JSON
+# "__TASK__" in the JSON is replaced by the task id.
+#   FAKE_INVALID   how many initial calls per role return no JSON
+#   FAKE_LOG       directory for <role>-<n>.prompt / .args
 schema=""
 prev=""
 for a in "$@"; do
@@ -13,8 +16,8 @@ for a in "$@"; do
   prev=$a
 done
 case $schema in
-  *upheld*) role=confirmer; out=${FAKE_CONFIRMER_JSON:-} ;;
-  *) role=reviewer; out=${FAKE_REVIEWER_JSON:-} ;;
+  *upheld*) role=confirmer; var=FAKE_CONFIRMER_JSON ;;
+  *) role=reviewer; var=FAKE_REVIEWER_JSON ;;
 esac
 
 log=${FAKE_LOG:?FAKE_LOG must be set}
@@ -23,6 +26,16 @@ n=1
 while [ -e "$log/$role-$n.prompt" ]; do n=$((n + 1)); done
 cat >"$log/$role-$n.prompt"
 printf '%s\n' "$@" >"$log/$role-$n.args"
+
+first=$(head -n 1 "$log/$role-$n.prompt")
+task=$(printf '%s' "$first" | grep -oE 'T[0-9]+' | head -n 1)
+round=$(printf '%s' "$first" | sed -nE 's/.*round ([0-9]+).*/\1/p')
+out=""
+for v in "${var}_${task}_R${round}" "${var}_${task}" "$var"; do
+  eval "out=\${$v:-}"
+  [ -n "$out" ] && break
+done
+out=$(printf '%s' "$out" | sed "s/__TASK__/$task/g")
 
 if [ "$n" -le "${FAKE_INVALID:-0}" ] || [ -z "$out" ]; then
   printf '{"type":"result","subtype":"success","is_error":false,"result":"I think it is fine.","structured_output":null,"total_cost_usd":0.01}\n'
