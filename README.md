@@ -7,7 +7,7 @@ Công cụ điều phối coding tự động, cài một lần rồi dùng cho 
 
 Thiết kế đầy đủ: [`ORCHESTRA-context.md`](ORCHESTRA-context.md). Các quyết định kỹ thuật của engine: [`docs/decisions/`](docs/decisions/).
 
-> **Trạng thái: v0.1.0, đang xây.** Đã chạy được: `orchestra init` (scaffold vào project), `orchestra go` (readiness check + đóng băng hồ sơ), runner VERIFY, adapter `mock`/`opencode`/`claude`. Chưa có: vòng lặp daemon pha 2, review, escalation; `design`/`status`/`resolve`/`stop` trả exit code 3.
+> **Trạng thái: v0.1.0, đang xây.** Đã chạy được: `orchestra init` (scaffold vào project), `orchestra go` (readiness check + đóng băng hồ sơ), runner VERIFY, review hai lớp (reviewer + confirmer + luật escalate cứng), adapter `mock`/`opencode`/`claude`. Chưa có: vòng lặp daemon pha 2, kênh escalation; `design`/`status`/`resolve`/`stop` trả exit code 3.
 
 ## Yêu cầu
 
@@ -61,7 +61,7 @@ make check     # chạy cả ba
 - [x] 1. Artifact nền: schemas, templates docs/, traceability, readiness check, `init`, `go`
 - [x] 2. Runner VERIFY (`done_when`)
 - [x] Adapter interface + `mock`/`opencode`/`claude` (một phần bước 5)
-- [ ] 3. Review + context pack (`claude -p` → verdict)
+- [x] 3. Review + context pack (`claude -p` → verdict → confirmer → luật cứng)
 - [ ] 4. Daemon end-to-end với 1 agent
 - [ ] 5. Pool nhiều agent + worktree + integration build
 - [ ] 6. Escalation UX: `/resolve`, dashboard, gates

@@ -75,6 +75,24 @@
         }
       }
     },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_pack_bytes": {
+          "type": "integer",
+          "minimum": 1000,
+          "default": 400000,
+          "description": "Context-pack size cap. Optional sections are dropped first; if diff + tests alone exceed it, the task escalates."
+        },
+        "max_budget_usd": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1,
+          "description": "Per-call spend cap passed to claude -p --max-budget-usd."
+        }
+      }
+    },
     "escalation": {
       "type": "object",
       "additionalProperties": false,

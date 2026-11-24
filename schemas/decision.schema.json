@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orchestra.local/schemas/decision.schema.json",
+  "title": "decision.json",
+  "description": "The effective outcome of one review round, written to .bus/review/<task>/round-<n>/decision.json. Combines the reviewer verdict, the confirmer check (ACCEPT only) and the hard escalation rules. This is what the daemon acts on.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task", "round", "verdict", "reviewer_verdict", "upheld", "reasons", "dropped_sections", "synthetic_verdict", "cost_usd", "decided_at"],
+  "properties": {
+    "task": { "type": "string", "pattern": "^T[0-9]+$" },
+    "round": { "type": "integer", "minimum": 1 },
+    "verdict": {
+      "enum": ["ACCEPT", "REJECT", "ESCALATE"],
+      "description": "Effective verdict after the confirmer and the hard rules."
+    },
+    "reviewer_verdict": { "enum": ["ACCEPT", "REJECT", "ESCALATE"] },
+    "upheld": {
+      "type": ["boolean", "null"],
+      "description": "Confirmer result; null when the confirmer did not run (verdict was not ACCEPT)."
+    },
+    "reasons": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Why the effective verdict differs from the reviewer's, if it does (confirmer downgrade, hard rules)."
+    },
+    "dropped_sections": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Optional pack sections removed to fit max_pack_bytes."
+    },
+    "synthetic_verdict": {
+      "type": "boolean",
+      "description": "true when the engine produced the verdict itself (reviewer output invalid twice, or pack oversize)."
+    },
+    "cost_usd": { "type": "number", "minimum": 0 },
+    "decided_at": { "type": "string", "minLength": 1 }
+  }
+}

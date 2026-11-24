@@ -1,0 +1,32 @@
+#!/bin/sh
+# fake-claude — stands in for `claude -p` in tests. Never calls the network.
+# Reads the prompt on stdin, logs args + prompt, and prints a claude-style JSON
+# envelope whose structured_output comes from the environment:
+#   FAKE_REVIEWER_JSON    object returned to reviewer calls
+#   FAKE_CONFIRMER_JSON   object returned to confirmer calls
+#   FAKE_INVALID          how many initial calls per role return no JSON
+#   FAKE_LOG              directory for <role>-<n>.prompt / .args
+schema=""
+prev=""
+for a in "$@"; do
+  [ "$prev" = "--json-schema" ] && schema=$a
+  prev=$a
+done
+case $schema in
+  *upheld*) role=confirmer; out=${FAKE_CONFIRMER_JSON:-} ;;
+  *) role=reviewer; out=${FAKE_REVIEWER_JSON:-} ;;
+esac
+
+log=${FAKE_LOG:?FAKE_LOG must be set}
+mkdir -p "$log"
+n=1
+while [ -e "$log/$role-$n.prompt" ]; do n=$((n + 1)); done
+cat >"$log/$role-$n.prompt"
+printf '%s\n' "$@" >"$log/$role-$n.args"
+
+if [ "$n" -le "${FAKE_INVALID:-0}" ] || [ -z "$out" ]; then
+  printf '{"type":"result","subtype":"success","is_error":false,"result":"I think it is fine.","structured_output":null,"total_cost_usd":0.01}\n'
+  exit 0
+fi
+jq -nc --argjson o "$out" \
+  '{type: "result", subtype: "success", is_error: false, result: ($o | tostring), structured_output: $o, total_cost_usd: 0.02}'
