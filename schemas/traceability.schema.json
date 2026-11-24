@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orchestra.local/schemas/traceability.schema.json",
+  "title": "traceability",
+  "description": "Schema for traceability.json. TODO: define fields.",
+  "type": "object"
+}

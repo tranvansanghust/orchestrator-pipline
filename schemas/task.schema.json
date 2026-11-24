@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orchestra.local/schemas/task.schema.json",
+  "title": "task",
+  "description": "Schema for .bus/tasks/<id>.json. TODO: define fields.",
+  "type": "object"
+}

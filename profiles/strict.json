@@ -1,0 +1,14 @@
+{
+  "name": "strict",
+  "description": "Large or sensitive systems: every check is mandatory.",
+  "readiness": {
+    "coverage": true,
+    "testability": true,
+    "rationale": true,
+    "api_spec": true,
+    "data_model": true,
+    "nfr": true,
+    "review_brief": true,
+    "plan_schema": true
+  }
+}

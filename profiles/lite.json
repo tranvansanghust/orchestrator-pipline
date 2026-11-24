@@ -1,0 +1,14 @@
+{
+  "name": "lite",
+  "description": "Spikes and small tools: only the checks phase 2 cannot run without.",
+  "readiness": {
+    "coverage": true,
+    "testability": true,
+    "rationale": false,
+    "api_spec": false,
+    "data_model": false,
+    "nfr": false,
+    "review_brief": false,
+    "plan_schema": true
+  }
+}

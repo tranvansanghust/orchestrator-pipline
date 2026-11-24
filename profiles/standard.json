@@ -1,0 +1,14 @@
+{
+  "name": "standard",
+  "description": "Default for normal projects.",
+  "readiness": {
+    "coverage": true,
+    "testability": true,
+    "rationale": true,
+    "api_spec": true,
+    "data_model": false,
+    "nfr": true,
+    "review_brief": true,
+    "plan_schema": true
+  }
+}

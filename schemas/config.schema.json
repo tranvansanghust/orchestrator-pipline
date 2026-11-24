@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orchestra.local/schemas/config.schema.json",
+  "title": "config",
+  "description": "Schema for orchestra.config.json. TODO: define fields.",
+  "type": "object"
+}

@@ -1,0 +1,7 @@
+# Real OpenAPI document (machine-readable) — the cross-task contract.
+# TODO: filled example.
+openapi: 3.1.0
+info:
+  title: TODO
+  version: 0.1.0
+paths: {}

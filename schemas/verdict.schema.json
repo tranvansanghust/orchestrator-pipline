@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://orchestra.local/schemas/verdict.schema.json",
+  "title": "verdict",
+  "description": "Schema for reviewer verdict. TODO: define fields.",
+  "type": "object"
+}

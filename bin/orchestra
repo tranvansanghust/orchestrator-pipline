@@ -1,0 +1,59 @@
+#!/bin/sh
+# orchestra — entrypoint. Resolves ORCHESTRA_HOME and dispatches subcommands
+# to functions defined in lib/. POSIX sh only.
+set -eu
+
+# Follow symlinks (install.sh links this file into PATH) without readlink -f.
+resolve_self_dir() {
+  _path=$1
+  while [ -L "$_path" ]; do
+    _dir=$(cd -P "$(dirname "$_path")" && pwd)
+    _path=$(readlink "$_path")
+    case $_path in
+      /*) ;;
+      *) _path=$_dir/$_path ;;
+    esac
+  done
+  cd -P "$(dirname "$_path")" && pwd
+}
+
+ORCHESTRA_HOME=${ORCHESTRA_HOME:-$(cd "$(resolve_self_dir "$0")/.." && pwd)}
+export ORCHESTRA_HOME
+
+. "$ORCHESTRA_HOME/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: orchestra <command> [args]
+
+Commands:
+  init               Scaffold orchestra into the current project
+  design             Open the phase-1 cockpit (Claude TUI in tmux)
+  go [--profile P]   Run the readiness check, freeze docs/, start phase 2
+  status             Show task states and open escalations
+  resolve <task> <accept|reject|amend-spec> [message]
+                     Resolve an escalated task
+  stop               Stop the phase-2 daemon
+  version            Print the engine version
+  help               Show this help
+EOF
+}
+
+cmd=${1:-help}
+[ $# -gt 0 ] && shift
+
+case $cmd in
+  init)    orchestra_load init;             init_project "$@" ;;
+  design)  orchestra_load tmux;             tmux_open_cockpit "$@" ;;
+  go)      orchestra_load readiness daemon; go_main "$@" ;;
+  status)  orchestra_load bus statemachine; status_main "$@" ;;
+  resolve) orchestra_load escalation;       escalation_resolve "$@" ;;
+  stop)    orchestra_load daemon;           daemon_stop "$@" ;;
+  version|--version|-v) cat "$ORCHESTRA_HOME/VERSION" ;;
+  help|--help|-h) usage ;;
+  *)
+    printf 'orchestra: unknown command: %s\n\n' "$cmd" >&2
+    usage >&2
+    exit "$ORCHESTRA_EXIT_USAGE"
+    ;;
+esac
