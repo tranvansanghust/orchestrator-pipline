@@ -41,15 +41,18 @@ interesting tasks change more than one of them at once.
    .worktrees/_run/            orchestra/run of root
    .worktrees/_run/<path>/     orchestra/run of each repo
    .worktrees/<task>/          orchestra/<task> of root
-   .worktrees/<task>/<path>/   orchestra/<task> of each repo in tasks[].repos
-   .worktrees/<task>/<path>    symlink to _run/<path> for every other repo
+   .worktrees/<task>/<path>/   orchestra/<task> of each repo in tasks[].repos,
+                               a detached checkout of orchestra/run otherwise
    ```
 
-   Each repo gets the same branch names; a task's `base` is recorded per repo.
-   Untouched repos are visible read-only by convention. A symlink cannot
-   enforce that, so after each agent turn the `_run` checkouts it could
-   reach are checked; any change is discarded and the attempt fails VERIFY
-   with feedback naming the repo.
+   Each repo gets the same branch names; a task's start commits are recorded
+   per repo (`bases`). The repos a task may not change (root too, when it is
+   not listed) are readable but read-only: after each agent turn, any change
+   there since the checkout's merge base with `orchestra/run` (commits
+   included) is discarded and the attempt fails VERIFY with feedback naming
+   the files. A detached checkout per task, rather than a symlink to `_run`,
+   keeps a stray write away from `orchestra/run` and from parallel tasks, and
+   is a directory root's `.gitignore` already covers.
 
 5. **VERIFY** groups `tests_pass` by owning repo and runs each repo's
    `test_one` in that repo's worktree with repo-relative paths; `typecheck`

@@ -16,7 +16,12 @@
     "reject_rounds": { "type": "integer", "minimum": 0, "description": "REJECT verdicts." },
     "agent": { "type": "string", "minLength": 1 },
     "agent_rc": { "type": "integer", "description": "Exit status of the last agent run (124 = timed out)." },
-    "base": { "type": "string", "minLength": 1, "description": "Commit the task branch started from." },
+    "base": { "type": "string", "minLength": 1, "description": "Commit the task branch started from (repo root)." },
+    "bases": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "description": "Start commit of the task's checkout of every repo, by repo name (ADR-0013)."
+    },
     "branch": { "type": "string", "minLength": 1 },
     "worktree": { "type": "string", "minLength": 1 },
     "reason": { "type": "string", "description": "Why the last transition happened." },

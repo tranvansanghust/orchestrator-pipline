@@ -53,3 +53,14 @@ make_project() {
 state() { jq -r '.state' ".bus/tasks/$1.json" 2>/dev/null || echo DRAFT; }
 field() { jq -r "$2" ".bus/tasks/$1.json"; }
 plan_edit() { jq "$1" plan.json > p && mv p plan.json; }
+
+# make_workspace — make_project plus a child repo web/ (ADR-0013): gitignored
+# by root, configured under repos with the same stack, holding web/app.txt.
+make_workspace() {
+  make_project
+  mkdir web && git -C web init -q && printf 'v1\n' > web/app.txt
+  git -C web add -A && git -C web -c user.email=t@t -c user.name=t commit -qm init
+  printf 'web/\n' >> .gitignore
+  jq '.repos = {web: {path: "web", stack: .stack}}' orchestra.config.json > c && mv c orchestra.config.json
+  git add -A && git -c user.email=t@t -c user.name=t commit -qm workspace
+}

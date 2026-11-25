@@ -386,12 +386,12 @@ daemon_integrate() {
   _iwt=$(_wt_dir "$_it")
   worktree_commit "$_it" "orchestra: $_it $(plan_task "$_it" '.desc')" || return 1
   bus_lock git
-  _ihead=$(git -C "$_iwt" rev-parse HEAD)
+  _iheads=$(worktree_heads "$_it")
   if ! worktree_update "$_it"; then
     bus_unlock git
     return 2
   fi
-  if [ "$(git -C "$_iwt" rev-parse HEAD)" != "$_ihead" ]; then
+  if [ "$(worktree_heads "$_it")" != "$_iheads" ]; then
     if ! ( runner_verify "$_it" "$_iwt" ) >/dev/null 2>&1; then
       bus_unlock git
       return 3
@@ -524,7 +524,7 @@ daemon_loop() {
 
   _max=$(config_get '.execution.max_parallel // (.agents | length)')
   [ "$_max" -ge 1 ] 2>/dev/null || _max=1
-  _run_rev=$(git -C "$(_wt_dir _run)" rev-parse HEAD)
+  _run_rev=$(worktree_heads _run)
   printf '\nPhase 2: running the plan on branch orchestra/run, up to %s task(s) at once\n' "$_max"
 
   _nl='
@@ -581,7 +581,7 @@ EOF
 
   _integ=""
   if ! _dm_stop_requested && [ "$(config_get '.execution.integration // "end"')" = end ] \
-    && [ "$(git -C "$(_wt_dir _run)" rev-parse HEAD)" != "$_run_rev" ]; then
+    && [ "$(worktree_heads _run)" != "$_run_rev" ]; then
     printf '\nIntegration build on orchestra/run\n'
     if daemon_integration; then _integ=0; else _integ=$?; fi
   elif [ -f "$(bus_dir)/escalations/integration.md" ]; then

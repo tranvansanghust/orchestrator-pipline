@@ -132,7 +132,7 @@ _res_amend() {
   _go_freeze "$_prof"
   worktree_run_init
   worktree_remove "$_at"
-  git -C "$(project_root)" branch -D "orchestra/$_at" >/dev/null 2>&1 || true
+  worktree_drop_branches "$_at"
   if [ -d "$(bus_dir)/review/$_at" ]; then
     mv "$(bus_dir)/review/$_at" "$(bus_dir)/review/$_at.superseded-$(date -u +%Y%m%dT%H%M%SZ)"
   fi
@@ -141,7 +141,7 @@ _res_amend() {
     "$2
 
 You start again from scratch on the amended design; re-read the spec below."
-  task_update "$_at" 'del(.base, .branch, .worktree, .agent_rc) | .verify_rounds = 0 | .reject_rounds = 0'
+  task_update "$_at" 'del(.base, .bases, .branch, .worktree, .agent_rc) | .verify_rounds = 0 | .reject_rounds = 0'
   sm_transition "$_at" DRAFT "spec amended"
 }
 
