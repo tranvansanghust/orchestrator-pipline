@@ -80,8 +80,8 @@ interesting tasks change more than one of them at once.
 - Built in four steps: schema and readiness (this ADR), worktrees, daemon /
   runner / review, then `init` (detects child repos and gitignores them),
   `doctor`, `status`, `resolve`, an example and docs.
-- `project_root` resolves to the enclosing git repo; run from inside a child
-  repo it finds the child. Step 4 makes it look for the nearest directory
-  with `orchestra.config.json` first.
+- `project_root` looks for the nearest directory with `orchestra.config.json`
+  before falling back to the enclosing git repo, so `orchestra` works from
+  inside a child repo.
 - Merging across repos is not atomic at the git level; the recorded run tips
   are the rollback, and the git lock keeps other workers out meanwhile.

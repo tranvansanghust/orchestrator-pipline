@@ -41,15 +41,26 @@ orchestra_load() {
   done
 }
 
-# project_root — top of the current git repo, or the working directory.
-# bin/orchestra computes it once into ORCHESTRA_PROJECT_ROOT; the engine calls
-# this hundreds of times per run.
+# project_root — the nearest directory up from here with an
+# orchestra.config.json (so a workspace is found from inside one of its repos,
+# ADR-0013); otherwise the top of the current git repo, or the working
+# directory. bin/orchestra computes it once into ORCHESTRA_PROJECT_ROOT; the
+# engine calls this hundreds of times per run.
 project_root() {
   if [ -n "${ORCHESTRA_PROJECT_ROOT:-}" ]; then
     printf '%s\n' "$ORCHESTRA_PROJECT_ROOT"
     return 0
   fi
-  git rev-parse --show-toplevel 2>/dev/null || pwd
+  _prd=$(pwd -P)
+  while :; do
+    if [ -f "$_prd/orchestra.config.json" ]; then
+      printf '%s\n' "$_prd"
+      return 0
+    fi
+    [ "$_prd" != / ] || break
+    _prd=$(dirname "$_prd")
+  done
+  git rev-parse --show-toplevel 2>/dev/null || pwd -P
 }
 
 # bus_dir — ephemeral per-project state (gitignored).

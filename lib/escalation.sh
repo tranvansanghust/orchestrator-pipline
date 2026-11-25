@@ -26,6 +26,10 @@ escalation_open() {
     printf '## Why\n\n%s\n\n' "$_er"
     printf '## Where to look\n\n'
     printf -- '- worktree: .worktrees/%s (branch orchestra/%s)\n' "$_et" "$_et"
+    if [ "$(config_get '.repos // {} | length')" -gt 0 ]; then
+      printf -- '- repos it may change: %s; each has branch orchestra/%s, checked out at its own path inside the worktree\n' \
+        "$(task_repos "$_et" | paste -sd, - | sed 's/,/, /g')" "$_et"
+    fi
     printf -- '- agent prompts and feedback: .bus/tasks/%s/\n' "$_et"
     printf -- '- verify report: .bus/verify/%s.json\n' "$_et"
     printf -- '- review rounds: .bus/review/%s/\n\n' "$_et"
@@ -102,7 +106,7 @@ _res_accept() {
   if daemon_integrate "$1"; then :; else
     case $? in
       1) die "could not commit the work in .worktrees/$1" ;;
-      2) die "orchestra/$1 conflicts with work merged into orchestra/run since; resolve the conflict in .worktrees/$1 (git merge orchestra/run), commit, and accept again" ;;
+      2) die "orchestra/$1 conflicts with work merged into orchestra/run since; resolve the conflict in .worktrees/$1 (git merge orchestra/run, in each repo of the task), commit, and accept again" ;;
       3) die "VERIFY fails once orchestra/run is merged into orchestra/$1; use reject to send it back to the agent" ;;
       *) die "merging orchestra/$1 into orchestra/run failed" ;;
     esac

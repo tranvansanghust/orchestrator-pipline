@@ -5,9 +5,9 @@ Công cụ điều phối coding tự động, cài một lần rồi dùng cho 
 - **Pha 1 — thiết kế (người ⇄ Claude):** bạn làm việc với Claude Code để soạn bộ hồ sơ SDLC trong `docs/` (PRD, SRS, kiến trúc, ADR, OpenAPI, data model, test plan, task breakdown, review brief), kèm `plan.json` và `traceability.json`.
 - **Pha 2 — thực thi (tự động):** `orchestra go` kiểm tra hồ sơ đã đủ chưa, đóng băng nó, rồi giao từng task cho các agent CLI (Claude, OpenCode/GLM, DeepSeek, ZCode…), chạy song song khi có nhiều agent. Mỗi task chạy trong một git worktree riêng. Máy chạy test/typecheck/build trước, đạt rồi mới đến Claude review hai lớp. Chỗ nào không chắc chắn thì dừng lại và chờ người.
 
-Thiết kế gốc: [`ORCHESTRA-context.md`](ORCHESTRA-context.md). Mọi quyết định kỹ thuật: [`docs/decisions/`](docs/decisions/) (ADR-0001 → 0012).
+Thiết kế gốc: [`ORCHESTRA-context.md`](ORCHESTRA-context.md). Mọi quyết định kỹ thuật: [`docs/decisions/`](docs/decisions/) (ADR-0001 → 0013).
 
-> **Trạng thái: v0.2.0.** Chạy được trọn vòng: `init` → thiết kế với Claude → `go` (readiness, đóng băng, chạy song song, VERIFY, review hai lớp, merge) → `resolve` khi cần người → integration build. Đã kiểm chứng bằng 145 test offline (`make check`), cùng test online với Claude thật.
+> **Trạng thái: v0.3.0.** Chạy được trọn vòng: `init` → thiết kế với Claude → `go` (readiness, đóng băng, chạy song song, VERIFY, review hai lớp, merge) → `resolve` khi cần người → integration build, cho một repo hoặc một workspace nhiều repo. Đã kiểm chứng bằng 168 test offline (`make check`), cùng test online với Claude thật.
 
 ## Yêu cầu
 
@@ -81,6 +81,31 @@ orchestra go                                    # chạy tiếp
 
 **5. Lấy kết quả.** Toàn bộ code đã duyệt nằm trên nhánh `orchestra/run`. Bạn review rồi merge vào nhánh của mình. Engine **không bao giờ** đụng vào nhánh bạn đang làm và **không bao giờ** push.
 
+## Workspace nhiều repo
+
+Một project có thể gồm nhiều repo git nằm cạnh nhau, ví dụ `backend/` và `frontend/` (ADR-0013). Thư mục cha là repo `root`: nó chứa `docs/`, `plan.json`, config và các file chung như `docker-compose.yml` hay e2e. Mỗi repo con có `stack` riêng.
+
+```sh
+cd my-workspace                   # chứa backend/ và frontend/, mỗi thư mục là một repo git
+orchestra init                    # tự nhận ra các repo con, git init thư mục cha, gitignore các repo con
+git add -A && git commit -m "orchestra workspace"
+```
+
+```json
+"repos": {
+  "backend":  { "path": "backend",  "stack": { "language": "go", "test": "go test ./...", "test_one": "go test {files}" } },
+  "frontend": { "path": "frontend", "stack": { "language": "typescript", "test": "npm test", "test_one": "npx vitest run {files}" } }
+}
+```
+
+- Task trong `plan.json` ghi các repo nó được sửa ở `repos` (mặc định `["root"]`). `scope` và `tests_pass` tính từ thư mục cha, ví dụ `backend/internal/...`.
+- Mỗi task có một worktree mô phỏng lại workspace: repo được giao được checkout trên nhánh `orchestra/<task>`, các repo còn lại là bản chỉ đọc. Sửa vào bản chỉ đọc thì thay đổi bị huỷ và lượt đó tính là VERIFY fail.
+- VERIFY chạy test của từng repo bằng `stack` của repo đó. Reviewer nhận một diff gộp. Merge diễn ra ở mọi repo của task, hoặc không repo nào. `stack.integration` của root chạy trên `.worktrees/_run`, nơi các repo nằm cạnh nhau.
+- Kết quả nằm trên nhánh `orchestra/run` của **từng repo**.
+- Chạy `orchestra` ở đâu trong workspace cũng được, kể cả bên trong một repo con.
+
+Ví dụ chạy được ngay: `examples/workspace/make-demo.sh /tmp/demo` dựng một workspace gồm `api/` và `web/`.
+
 ## Lệnh
 
 | Lệnh | Việc |
@@ -126,7 +151,7 @@ commands/         slash command pha 1 (init copy vào .claude/commands/)
 templates/        khung docs/, config, plan, traceability, rubric, prompt reviewer
 profiles/         lite | standard | strict
 schemas/          JSON Schema: config, plan, traceability, task, verify, verdict, confirmation, decision
-examples/         blog-api: bộ hồ sơ pha 1 điền đủ
+examples/         blog-api: bộ hồ sơ pha 1 điền đủ; workspace: ví dụ nhiều repo (make-demo.sh)
 test/             bats
 ```
 

@@ -74,3 +74,30 @@ cfg() { jq -r "$1" orchestra.config.json; }
   run "$ORCHESTRA" init --yolo
   [ "$status" -eq 2 ]
 }
+
+@test "init in a directory of repos sets up a workspace" {
+  for r in web svc/api web/sub; do mkdir -p "$r" && git -C "$r" init -q; done
+  printf '{"devDependencies":{"jest":"1"}}\n' > web/package.json
+  printf 'module x\n' > svc/api/go.mod
+  run "$ORCHESTRA" init
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [ -d .git ]
+  ! git rev-parse --verify -q HEAD
+  [ "$(cfg '.repos | keys | join(",")')" = "svc-api,web" ]
+  [ "$(cfg '.repos["svc-api"].path')" = svc/api ]
+  [ "$(cfg '.repos["svc-api"].stack.language')" = go ]
+  [ "$(cfg '.repos.web.stack.test_one')" = "npx jest {files}" ]
+  [ "$(cfg '.stack.language')" = unknown ]
+  grep -qx 'web/' .gitignore
+  grep -qx 'svc/api/' .gitignore
+  [[ "$output" == *"repo    web/ as web (stack: javascript)"* ]]
+  [[ "$output" == *"commit the root repo first"* ]]
+  check-jsonschema --schemafile "$ROOT/schemas/config.schema.json" orchestra.config.json
+}
+
+@test "init without child repos leaves git alone" {
+  run "$ORCHESTRA" init
+  [ "$status" -eq 0 ]
+  [ ! -d .git ]
+  [ "$(cfg '.repos // "none"')" = none ]
+}

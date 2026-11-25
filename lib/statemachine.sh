@@ -84,12 +84,23 @@ status_main() {
 
 _status_once() {
   plan_path >/dev/null
-  printf '%-5s %-11s %-10s %-6s %-6s %s\n' TASK STATE AGENT VERIFY REJECT REASON
-  for _t in $(plan_get '.tasks[].id'); do
-    printf '%-5s %-11s %-10s %-6s %-6s %s\n' "$_t" "$(sm_state "$_t")" \
-      "$(task_get "$_t" '.agent // "-"')" "$(task_get "$_t" '.verify_rounds')" \
-      "$(task_get "$_t" '.reject_rounds')" "$(task_get "$_t" '.reason // ""')"
-  done
+  # A workspace (ADR-0013) adds the repos each task may change.
+  if [ "$(config_get '.repos // {} | length')" -gt 0 ]; then
+    printf '%-5s %-11s %-10s %-14s %-6s %-6s %s\n' TASK STATE AGENT REPOS VERIFY REJECT REASON
+    for _t in $(plan_get '.tasks[].id'); do
+      printf '%-5s %-11s %-10s %-14s %-6s %-6s %s\n' "$_t" "$(sm_state "$_t")" \
+        "$(task_get "$_t" '.agent // "-"')" "$(task_repos "$_t" | paste -sd, -)" \
+        "$(task_get "$_t" '.verify_rounds')" "$(task_get "$_t" '.reject_rounds')" \
+        "$(task_get "$_t" '.reason // ""')"
+    done
+  else
+    printf '%-5s %-11s %-10s %-6s %-6s %s\n' TASK STATE AGENT VERIFY REJECT REASON
+    for _t in $(plan_get '.tasks[].id'); do
+      printf '%-5s %-11s %-10s %-6s %-6s %s\n' "$_t" "$(sm_state "$_t")" \
+        "$(task_get "$_t" '.agent // "-"')" "$(task_get "$_t" '.verify_rounds')" \
+        "$(task_get "$_t" '.reject_rounds')" "$(task_get "$_t" '.reason // ""')"
+    done
+  fi
   _ts=$(bus_dir)/traceability.status.json
   if [ -f "$_ts" ]; then
     printf '\nRequirements:\n'

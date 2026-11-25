@@ -1,0 +1,16 @@
+{
+  "FR-1": {
+    "desc": "The API reports how many todos are open",
+    "tasks": ["T1"],
+    "tests": ["api/test/count.sh"],
+    "acceptance": "open_count prints the number of lines in data/todos.txt not starting with [x]",
+    "status": "planned"
+  },
+  "FR-2": {
+    "desc": "The web header shows the open todo count",
+    "tasks": ["T2"],
+    "tests": ["web/test/header.sh"],
+    "acceptance": "header prints 'Todos (<n> open)' using the API's open_count",
+    "status": "planned"
+  }
+}

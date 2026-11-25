@@ -57,3 +57,21 @@ setup() {
   ! git -C web show orchestra/run:hack.txt 2>/dev/null
   [ ! -e .worktrees/T2/web/hack.txt ]
 }
+
+@test "orchestra finds the workspace from inside a child repo" {
+  "$ORCHESTRA" go --no-run >/dev/null
+  cd web
+  run "$ORCHESTRA" status
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [[ "$output" == *"REPOS"* ]]
+  [[ "$output" == *"root,web"* ]]
+}
+
+@test "the workspace example builds and passes the readiness check" {
+  sh "$ROOT/examples/workspace/make-demo.sh" "$BATS_TEST_TMPDIR/demo"
+  cd "$BATS_TEST_TMPDIR/demo"
+  run "$ORCHESTRA" go --no-run
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+  [[ "$output" == *"PASS  plan_schema"* ]]
+  [ "$(git -C api rev-parse --abbrev-ref HEAD)" != orchestra/run ]
+}

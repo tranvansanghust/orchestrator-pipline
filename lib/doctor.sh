@@ -53,6 +53,8 @@ doctor_main() {
   if _cv=$(config_validate 2>&1); then
     _doc_ok "orchestra.config.json is valid"
     if [ -n "$_cv" ]; then _doc_warn "$_cv"; fi
+    _wsr=$(config_get '.repos // {} | to_entries[] | "\(.key) (\(.value.path)/)"' | paste -sd, - | sed 's/,/, /g')
+    if [ -n "$_wsr" ]; then _doc_ok "workspace: root + $_wsr"; fi
   else
     _doc_fail "orchestra.config.json: $_cv"
     return 1

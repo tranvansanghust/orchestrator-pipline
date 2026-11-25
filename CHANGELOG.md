@@ -4,6 +4,25 @@ Semantic versioning (ADR-0002, README): major = config/plan schema change,
 minor = features, patch = fixes. Projects pin `orchestra_version`; a major
 mismatch warns.
 
+## 0.3.0 — 2026-11-25
+
+Multi-repo workspaces (ADR-0013). Additive: 0.2 configs and plans are
+unchanged and still valid.
+
+- Config `repos`: further git repos inside the project directory, each with
+  its own `stack`; the project directory is the repo `root`. Plan
+  `tasks[].repos` names the repos a task may change.
+- Every repo gets `orchestra/run` and `orchestra/<task>`, nested in the
+  worktrees as in the workspace. Repos a task may not change are read-only
+  detached checkouts; changes there are discarded and fail VERIFY (`scope`).
+- VERIFY, `stack.setup` and the integration build run per repo; review gets
+  one diff with project-relative paths; integrate and merge are all or
+  nothing across repos.
+- `orchestra init` detects child repos, git-initialises the workspace and
+  gitignores them; `orchestra` finds the project from any subdirectory;
+  `doctor`, `status` and the inbox show repos; `/breakdown` and `/plan` write
+  `repos`. Example: `examples/workspace/make-demo.sh`.
+
 ## 0.2.0 — 2026-11-25
 
 First version that runs end to end.

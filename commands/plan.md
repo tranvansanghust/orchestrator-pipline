@@ -14,12 +14,18 @@ missing information, stop and say which.
    - `goal`: one line from the PRD;
    - `approved`: `false` (only `orchestra go` sets it to true);
    - one task per `### T<n>` heading, in dependency order: `id`, `desc`,
-     `deps`, `skill`, `spec_file` (`docs/specs/T<n>.md`), `areas`, `scope`
-     (globs of the files the task should change, from its spec), and
+     `deps`, `skill`, `spec_file` (`docs/specs/T<n>.md`), `areas`, `repos`
+     (workspace only: the task's `Repos:` line; omit it in a single-repo
+     project), `scope` (globs of the files the task should change, from its
+     spec), and
      `done_when`: `tests_pass` (the task's test files from the test plan),
      `typecheck: true` when the stack has a typecheck command, `build: true`
      on the last task of a milestone.
    - No `build`/`test` commands here: they live in orchestra.config.json.
+   - In a workspace, `scope` and `tests_pass` paths are relative to the
+     project directory and each must fall inside one of the task's `repos`
+     (`backend/test/x.test.ts` belongs to the repo at `backend`); the
+     readiness check rejects a path outside them.
 3. Write `traceability.json`: one key per FR, `{desc, tasks, tests,
    acceptance, status: "planned"}`, where `tasks` are the tasks whose
    Requirements line names the FR and `tests` the FR's files in the test plan.

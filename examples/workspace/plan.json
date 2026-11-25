@@ -1,0 +1,29 @@
+{
+  "orchestra_version": "0.3.0",
+  "goal": "Show how many todos are open, from the API to the web header.",
+  "approved": false,
+  "tasks": [
+    {
+      "id": "T1",
+      "desc": "API: count open todos",
+      "deps": [],
+      "skill": "backend",
+      "spec_file": "docs/specs/T1.md",
+      "areas": [],
+      "repos": ["api"],
+      "scope": ["api/src/count.sh", "api/test/count.sh"],
+      "done_when": { "tests_pass": ["api/test/count.sh"] }
+    },
+    {
+      "id": "T2",
+      "desc": "Web: header shows the open todo count",
+      "deps": ["T1"],
+      "skill": "frontend",
+      "spec_file": "docs/specs/T2.md",
+      "areas": [],
+      "repos": ["web", "root"],
+      "scope": ["web/src/header.sh", "web/test/header.sh", "e2e.sh"],
+      "done_when": { "tests_pass": ["web/test/header.sh"] }
+    }
+  ]
+}

@@ -18,12 +18,18 @@ Input from the user: $ARGUMENTS
    - `- Requirements: FR-<n>, ...` (every task serves at least one FR);
    - `- Depends on: T<m>, ... | none` (no cycles);
    - `- Skill: <skill>` (must match an agent's skills in orchestra.config.json);
+   - `- Repos: root, <repo>, ...` in a workspace (`repos` in
+     orchestra.config.json): the repos the task changes. `root` is the
+     project directory itself; any other repo is read-only to the task, so a
+     task that changes an API and its client names both repos;
    - `- Areas: auth | payment | migration | ... | none` (sensitive areas
      always go to a human before merge);
    - `- Spec: docs/specs/T<n>.md`.
 4. Write each `docs/specs/T<n>.md` from `docs/specs/T0-template.md`: Goal,
    Contract (operationIds, functions, types it implements or relies on),
    Acceptance tests (the test files from the test plan), Out of scope, Notes.
+   In a workspace every path is relative to the project directory and starts
+   with the repo's path (`backend/src/...`, `web/test/...`).
    Write it so a capable engineer with no other context could finish the task.
 5. Report FRs not covered by any task and skills no configured agent has.
 
