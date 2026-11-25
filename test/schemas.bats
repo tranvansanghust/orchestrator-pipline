@@ -101,3 +101,27 @@ invalid() {
 @test "config: brain role object without cmd is rejected" {
   invalid config '.brain.reviewer = {"model": "x"}' "$EX/orchestra.config.json"
 }
+
+@test "config: repos with their own stack are valid" {
+  jq '.repos = {"web": {"path": "apps/web", "stack": .stack}}' \
+    "$EX/orchestra.config.json" > "$BATS_TEST_TMPDIR/c.json"
+  valid config "$BATS_TEST_TMPDIR/c.json"
+}
+
+@test "config: a repo named root is rejected" {
+  invalid config '.repos = {"root": {"path": "x", "stack": .stack}}' "$EX/orchestra.config.json"
+}
+
+@test "config: a repo path with dot segments is rejected" {
+  invalid config '.repos = {"web": {"path": "../web", "stack": .stack}}' "$EX/orchestra.config.json"
+}
+
+@test "config: a repo without a stack is rejected" {
+  invalid config '.repos = {"web": {"path": "web"}}' "$EX/orchestra.config.json"
+}
+
+@test "plan: task repos are valid; an empty list is rejected" {
+  jq '.tasks[0].repos = ["root", "web"]' "$EX/plan.json" > "$BATS_TEST_TMPDIR/p.json"
+  valid plan "$BATS_TEST_TMPDIR/p.json"
+  invalid plan '.tasks[0].repos = []' "$EX/plan.json"
+}

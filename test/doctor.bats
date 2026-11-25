@@ -55,3 +55,43 @@ setup() {
   [[ "$output" == *"schemas/config.schema.json"* ]]
   [ "$(jq -r '.approved' plan.json)" = false ]
 }
+
+# add_repo <name> — a child git repo under the project, in the config.
+add_repo() {
+  mkdir "$1" && git -C "$1" init -q && touch "$1/f"
+  git -C "$1" add -A && git -C "$1" -c user.email=t@t -c user.name=t commit -qm init
+  jq --arg n "$1" '.repos[$n] = {path: $n, stack: .stack}' orchestra.config.json > c && mv c orchestra.config.json
+}
+
+@test "doctor accepts a workspace whose repos are gitignored git repos" {
+  add_repo web
+  printf 'web/\n' >> .gitignore
+  run "$ORCHESTRA" doctor
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "doctor fails a repo the root does not ignore" {
+  add_repo web
+  run "$ORCHESTRA" doctor
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"repos.web: add web/ to the root .gitignore"* ]]
+}
+
+@test "doctor fails a repo path that is not a git repository" {
+  mkdir web
+  printf 'web/\n' >> .gitignore
+  jq '.repos.web = {path: "web", stack: .stack}' orchestra.config.json > c && mv c orchestra.config.json
+  run "$ORCHESTRA" doctor
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"repos.web: web is not the top of a git repository"* ]]
+}
+
+@test "doctor fails nested repos" {
+  add_repo web
+  mkdir -p web/sub && git -C web/sub init -q
+  jq '.repos.sub = {path: "web/sub", stack: .stack}' orchestra.config.json > c && mv c orchestra.config.json
+  printf 'web/\n' >> .gitignore
+  run "$ORCHESTRA" doctor
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"repos.sub (web/sub) is inside repos.web"* ]]
+}

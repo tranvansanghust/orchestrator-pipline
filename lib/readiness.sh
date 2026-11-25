@@ -14,7 +14,8 @@
 #   nfr            every NFR has a 'Metric | Target | How measured' row with a target
 #   review_brief   docs/09-review-brief.md exists and is non-empty
 #   plan_schema    plan.json (and traceability.json) match their schemas; spec
-#                  files exist; deps are known and acyclic
+#                  files exist; deps are known and acyclic; each task's repos
+#                  are configured and hold its scope and done_when tests
 #
 # Markdown is read through the conventions in templates/docs (ADR-0004).
 
@@ -205,6 +206,24 @@ $_id"
   done
 }
 
+# _rd_task_repos <task-id> — the task's repos exist in the config, and its
+# scope globs and done_when tests fall inside them (ADR-0013).
+_rd_task_repos() {
+  _trs=$(task_repos "$1")
+  _known=$(repo_names)
+  for _r in $_trs; do
+    _rd_in "$_r" "$_known" || _rd_gap "$1: repo $_r is not configured (repos in orchestra.config.json)"
+  done
+  # The loop runs in a subshell, so gaps come back as text.
+  _out=$(plan_task "$1" '(.scope // [])[], .done_when.tests_pass[]' | while IFS= read -r _tp; do
+    _own=$(repo_of "$_tp")
+    _rd_in "$_own" "$_trs" \
+      || printf '%s: %s is in repo %s, which is not in its repos (%s)\n' \
+        "$1" "$_tp" "$_own" "$(printf '%s\n' "$_trs" | paste -sd, -)"
+  done)
+  [ -z "$_out" ] || _rd_gap "$_out"
+}
+
 _rd_plan_schema() {
   _RD_BAD=0
   _root=$(project_root)
@@ -229,6 +248,7 @@ _rd_plan_schema() {
     for _d in $(plan_task "$_id" '.deps[]?'); do
       _rd_in "$_d" "$_ids" || _rd_gap "$_id depends on unknown task $_d"
     done
+    _rd_task_repos "$_id"
   done
   _rd_cycles "$_ids"
   return "$_RD_BAD"

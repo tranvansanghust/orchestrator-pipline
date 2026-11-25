@@ -57,11 +57,18 @@
           "items": { "type": "string", "minLength": 1 },
           "description": "Sensitive areas the task touches, matched against escalation.always_human."
         },
+        "repos": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+          "description": "Repos the task may change (ADR-0013): root, or names from repos in orchestra.config.json. Defaults to [\"root\"]. scope and done_when paths must fall inside them."
+        },
         "scope": {
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 },
-          "description": "Glob paths the task is expected to change. A diff outside them escalates."
+          "description": "Glob paths the task is expected to change, relative to the project directory. A diff outside them escalates."
         },
         "done_when": { "$ref": "#/$defs/doneWhen" }
       }

@@ -21,21 +21,25 @@
       "description": "Default readiness profile; `orchestra go --profile` overrides it."
     },
     "stack": {
+      "$ref": "#/$defs/stack",
+      "description": "Commands of the project's own repo (root). In workspace mode stack.integration builds the whole workspace."
+    },
+    "repos": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["language", "test", "test_one"],
-      "properties": {
-        "language": { "type": "string", "minLength": 1 },
-        "test": { "type": "string", "minLength": 1, "description": "Run the whole suite." },
-        "test_one": {
-          "type": "string",
-          "pattern": "\\{files\\}",
-          "description": "Run specific test files; {files} is replaced by a space-separated list."
-        },
-        "typecheck": { "type": "string", "minLength": 1 },
-        "build": { "type": "string", "minLength": 1 },
-        "integration": { "type": "string", "minLength": 1, "description": "Milestone integration build / e2e." },
-        "setup": { "type": "string", "minLength": 1, "description": "Run once in each new task worktree before the agent starts (e.g. npm ci)." }
+      "description": "Workspace mode (ADR-0013): further git repositories inside the project directory, each with its own stack. The project directory itself is the repo named root and is always present.",
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]*$", "not": { "const": "root" } },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "stack"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]*(/[A-Za-z0-9_][A-Za-z0-9_.-]*)*$",
+            "description": "Relative to the project directory, no dot segments. The root repo must gitignore it."
+          },
+          "stack": { "$ref": "#/$defs/stack" }
+        }
       }
     },
     "brain": {
@@ -147,6 +151,24 @@
     }
   },
   "$defs": {
+    "stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "test", "test_one"],
+      "properties": {
+        "language": { "type": "string", "minLength": 1 },
+        "test": { "type": "string", "minLength": 1, "description": "Run the whole suite." },
+        "test_one": {
+          "type": "string",
+          "pattern": "\\{files\\}",
+          "description": "Run specific test files; {files} is replaced by a space-separated list."
+        },
+        "typecheck": { "type": "string", "minLength": 1 },
+        "build": { "type": "string", "minLength": 1 },
+        "integration": { "type": "string", "minLength": 1, "description": "Milestone integration build / e2e." },
+        "setup": { "type": "string", "minLength": 1, "description": "Run once in each new task worktree before the agent starts (e.g. npm ci)." }
+      }
+    },
     "brainRole": {
       "anyOf": [
         { "type": "string", "minLength": 1 },

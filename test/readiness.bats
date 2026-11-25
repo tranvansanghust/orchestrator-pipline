@@ -140,3 +140,36 @@ plan_edit() { jq "$1" plan.json > p && mv p plan.json; }
   [ "$status" -ne 0 ]
   [[ "$output" == *"unknown profile: yolo"* ]]
 }
+
+cfg_web() { jq '.repos = {"web": {"path": "web", "stack": .stack}}' orchestra.config.json > c && mv c orchestra.config.json; }
+
+@test "plan_schema: a task naming an unconfigured repo fails" {
+  plan_edit '.tasks[0].repos = ["root", "web"]'
+  run readiness_check standard
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"T1: repo web is not configured"* ]]
+}
+
+@test "plan_schema: scope outside the task's repos fails" {
+  cfg_web
+  plan_edit '.tasks[0].repos = ["web"]'
+  run readiness_check standard
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"T1: src/db/** is in repo root, which is not in its repos (web)"* ]]
+  [[ "$output" == *"T1: test/user.model.test.ts is in repo root"* ]]
+}
+
+@test "plan_schema: a task spanning root and a repo passes" {
+  cfg_web
+  plan_edit '.tasks[0].repos = ["root", "web"] | .tasks[0].scope += ["web/src/**"]'
+  run readiness_check standard
+  [ "$status" -eq 0 ] || { echo "$output"; return 1; }
+}
+
+@test "plan_schema: a path in an unlisted repo fails" {
+  cfg_web
+  plan_edit '.tasks[0].scope += ["web/src/**"]'
+  run readiness_check standard
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"T1: web/src/** is in repo web, which is not in its repos (root)"* ]]
+}

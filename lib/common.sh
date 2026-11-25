@@ -76,6 +76,11 @@ plan_task() {
   plan_get --arg t "$_tid" ".tasks[] | select(.id == \$t) | $_tpath"
 }
 
+# task_repos <task-id> — repos the task may change, one per line (ADR-0013).
+task_repos() {
+  plan_task "$1" '(.repos // ["root"])[]'
+}
+
 # now_iso — UTC timestamp for logs and manifests.
 now_iso() {
   date -u +%Y-%m-%dT%H:%M:%SZ
