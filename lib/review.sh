@@ -76,7 +76,7 @@ review_build_pack() {
   # spec: task metadata + its spec file
   {
     printf '## Task %s\n\n' "$_task"
-    plan_task "$_task" '{id, desc, areas, scope, done_when}' | sed 's/^/    /'
+    plan_task "$_task" '{id, desc, repos: (.repos // ["root"]), areas, scope, done_when}' | sed 's/^/    /'
     printf '\n'
     if [ -f "$(project_root)/$(plan_task "$_task" '.spec_file')" ]; then
       printf '### Spec\n\n'

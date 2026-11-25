@@ -17,7 +17,11 @@
         "additionalProperties": false,
         "required": ["name", "cmd", "exit", "passed"],
         "properties": {
-          "name": { "enum": ["tests", "typecheck", "build", "command"] },
+          "name": {
+            "enum": ["tests", "typecheck", "build", "command", "scope"],
+            "description": "scope: the task changed repos it may not change (ADR-0013); the changes were discarded."
+          },
+          "repo": { "type": "string", "minLength": 1, "description": "Repo the check ran in (ADR-0013); absent for commands and scope." },
           "cmd": { "type": "string", "minLength": 1 },
           "exit": { "type": "integer" },
           "passed": { "type": "boolean" },

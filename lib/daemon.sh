@@ -127,12 +127,34 @@ _dm_prompt() {
     printf 'docs/04-api-spec.yaml, test plan in docs/06-test-plan.md).\n\n'
     printf '## Definition of done\n\n'
     printf 'You do not decide when you are done. Afterwards the orchestrator runs:\n\n'
-    runner_plan "$_pt" | while IFS="$_tab" read -r _n _c; do
-      printf -- '- %s: `%s`\n' "$_n" "${_c:-(not configured)}"
+    _pws=$(config_get '.repos // {} | length')
+    runner_plan "$_pt" | while IFS="$_tab" read -r _n _r _c; do
+      if [ "$_pws" -gt 0 ] && [ "$_r" != - ]; then
+        printf -- '- %s, in %s: `%s`\n' "$_n" "$(repo_path "$_r")" "${_c:-(not configured)}"
+      else
+        printf -- '- %s: `%s`\n' "$_n" "${_c:-(not configured)}"
+      fi
     done
     printf '\nWrite or update the test files named above so they assert the acceptance\n'
     printf 'criteria below and the cases in the test plan (happy path and edge cases),\n'
     printf 'then make them pass. Tests that pass without checking anything will be rejected.\n\n'
+    if [ "$_pws" -gt 0 ]; then
+      printf '## Repositories\n\n'
+      printf 'Your current directory is the whole workspace: the root repo, with each other\n'
+      printf 'repo checked out in its own directory. Paths in this prompt are relative to it.\n'
+      printf 'Commit inside the repo you changed.\n\n'
+      _pmine=$(task_repos "$_pt")
+      for _r in $(repo_names); do
+        _rp=$(repo_path "$_r")
+        if [ "$_rp" = . ]; then _rl="root (this directory, not the repos inside it)"; else _rl="$_rp/"; fi
+        if printf '%s\n' "$_pmine" | grep -qxF -- "$_r"; then
+          printf -- '- %s: you may change it\n' "$_rl"
+        else
+          printf -- '- %s: read only; changes there are discarded and fail verification\n' "$_rl"
+        fi
+      done
+      printf '\n'
+    fi
     _ps=$(plan_task "$_pt" '.scope[]?')
     if [ -n "$_ps" ]; then
       printf '## Files you may change\n\n'
@@ -258,19 +280,19 @@ _dm_run_task() {
           return 0
         fi
         _wt=$(_wt_dir "$_t")
-        if [ ! -d "$_wt" ]; then
-          if ! ( worktree_create "$_t" ) >/dev/null 2>&1; then
-            _dm_block "$_t" setup "could not create the worktree .worktrees/$_t"
+        if ! _new=$(worktree_create "$_t" 2>/dev/null); then
+          _dm_block "$_t" setup "could not create the worktree .worktrees/$_t"
+          return 0
+        fi
+        # stack.setup of each repo checked out just now, in its checkout.
+        for _r in $_new; do
+          _setup=$(repo_stack "$_r" setup)
+          [ -n "$_setup" ] || continue
+          if ! ( cd "$(_wt_in "$_wt" "$_r")" && sh -c "$_setup" ) >>"$(_dm_tdir "$_t")/setup.log" 2>&1; then
+            _dm_block "$_t" setup "stack.setup of repo $_r failed (see .bus/tasks/$_t/setup.log)"
             return 0
           fi
-          _setup=$(config_get '.stack.setup // empty')
-          if [ -n "$_setup" ]; then
-            if ! ( cd "$_wt" && sh -c "$_setup" ) >"$(_dm_tdir "$_t")/setup.log" 2>&1; then
-              _dm_block "$_t" setup "stack.setup failed (see .bus/tasks/$_t/setup.log)"
-              return 0
-            fi
-          fi
-        fi
+        done
         sm_transition "$_t" DISPATCHED "agent $_agent"
         ;;
       DISPATCHED)
@@ -305,7 +327,15 @@ _dm_run_task() {
         sm_transition "$_t" VERIFY "running done_when"
         ;;
       VERIFY)
-        if ( runner_verify "$_t" "$(task_get "$_t" '.worktree')" ) >/dev/null 2>&1; then
+        # Changes in repos the task may not change are undone first and fail
+        # this round (ADR-0013).
+        _fx=$(_dm_tdir "$_t")/foreign.txt
+        worktree_foreign "$_t" >"$_fx" 2>/dev/null || :
+        if [ -s "$_fx" ] && ! worktree_foreign_discard "$_t" >/dev/null 2>&1; then
+          _dm_block "$_t" setup "could not discard changes outside the task's repos (see $_fx)"
+          return 0
+        fi
+        if ( runner_verify "$_t" "$(task_get "$_t" '.worktree')" "$_fx" ) >/dev/null 2>&1; then
           sm_transition "$_t" REVIEW "verify passed"
         else
           _n=$(($(task_get "$_t" '.verify_rounds') + 1))
@@ -416,11 +446,13 @@ daemon_integration() {
   _irun=$(_wt_dir _run)
   _ilog=$(bus_dir)/integration.log
   : >"$_ilog"
-  _isetup=$(config_get '.stack.setup // empty')
   _ie=0
-  if [ -n "$_isetup" ]; then
-    ( cd "$_irun" && sh -c "$_isetup" ) >>"$_ilog" 2>&1 || _ie=$?
-  fi
+  for _ir in $(repo_names); do
+    _isetup=$(repo_stack "$_ir" setup)
+    [ -n "$_isetup" ] || continue
+    ( cd "$(_wt_in "$_irun" "$_ir")" && sh -c "$_isetup" ) >>"$_ilog" 2>&1 || _ie=$?
+    [ "$_ie" = 0 ] || break
+  done
   if [ "$_ie" = 0 ]; then
     ( cd "$_irun" && sh -c "$_icmd" ) >>"$_ilog" 2>&1 && _ie=0 || _ie=$?
   fi
